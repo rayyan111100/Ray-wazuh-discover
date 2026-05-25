@@ -124,6 +124,35 @@ td:hover .cell-filters{display:inline-flex;gap:1px}
 .date-sep{color:var(--text2);font-size:13px;padding:0 2px}
 .refresh-btn{background:var(--accent);border:none;color:#fff;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;transition:.2s}
 .refresh-btn:hover{opacity:.85}
+/* OSD query bar */
+.query-bar{background:var(--bg2);border-radius:8px;border:1px solid var(--border);margin-bottom:12px}
+.query-bar-main{display:flex;gap:8px;padding:6px 8px;flex-wrap:wrap;align-items:center}
+.qb-left{flex:1;display:flex;align-items:center;gap:4px;min-width:200px}
+.qb-saved{background:0 0;border:none;color:var(--text2);cursor:pointer;padding:4px 6px;border-radius:4px;font-size:15px;line-height:1;flex-shrink:0}
+.qb-saved:hover{background:var(--hover);color:var(--accent)}
+.qb-input{flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:13px;font-family:monospace;outline:0;min-width:100px}
+.qb-input:focus{border-color:var(--accent)}
+.qb-lang{background:var(--bg3);border:1px solid var(--border);color:var(--accent);padding:6px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:default;flex-shrink:0;border-left:0;border-radius:0 6px 6px 0}
+.qb-right{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.qb-date{display:flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:2px 4px}
+.qb-refresh{background:var(--accent);border:none;color:#fff;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap}
+.qb-refresh:hover{opacity:.85}
+.qb-limit{background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:12px;cursor:pointer}
+/* OSD filter bar */
+.filter-bar-wrap{display:flex;align-items:center;gap:6px;padding:4px 8px 8px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:8px;margin-top:0}
+.filter-action-btn{background:0 0;border:none;color:var(--text2);cursor:pointer;padding:4px 6px;border-radius:4px;font-size:14px;line-height:1;flex-shrink:0}
+.filter-action-btn:hover{background:var(--hover);color:var(--accent)}
+.filter-bar{display:flex;flex-wrap:wrap;gap:4px;flex:1}
+.filter-badge{display:inline-flex;align-items:center;background:var(--bg3);border:1px solid var(--border);border-radius:12px;font-size:11px;overflow:hidden}
+.filter-badge.negated{border-color:#d32f2f44}
+.filter-badge-main{background:0 0;border:none;color:var(--text);padding:3px 8px;cursor:pointer;white-space:nowrap}
+.filter-badge-main:hover{background:var(--hover)}
+.filter-badge-val{color:var(--accent);font-weight:500}
+.filter-badge-neg{color:#f44336;font-weight:600}
+.filter-badge-x{background:0 0;border:none;color:var(--text2);cursor:pointer;padding:3px 6px;font-size:13px;line-height:1;border-left:1px solid var(--border)}
+.filter-badge-x:hover{color:#f44336;background:var(--hover)}
+.add-filter-btn{background:0 0;border:1px dashed var(--border);color:var(--text2);padding:3px 12px;border-radius:12px;cursor:pointer;font-size:11px;flex-shrink:0}
+.add-filter-btn:hover{border-color:var(--accent);color:var(--accent)}
 
 @media(max-width:700px){.grid-2{grid-template-columns:1fr}.disc-layout{flex-direction:column}.disc-fields{width:100%;max-height:200px}}
 </style>
@@ -150,30 +179,41 @@ td:hover .cell-filters{display:inline-flex;gap:1px}
 </div>
 
 <div class="panel active" id="panel-discover">
-  <div class="disc-top">
-    <input type="text" id="dqlInput" placeholder='DQL — rule.level:[12 TO 15] OR data.win.system.eventID:"4625"' spellcheck="false" />
-    <div class="date-picker">
-      <div class="date-q-wrap">
-        <button class="date-q-btn" onclick="toggleQuickSelect()" title="Date quick select" id="dQBtn">📅</button>
-        <div class="date-q-menu" id="dQMenu">
-          <div class="date-q-item" data-val="15m">Last 15 minutes</div>
-          <div class="date-q-item" data-val="1h">Last 1 hour</div>
-          <div class="date-q-item active" data-val="24h">Last 24 hours</div>
-          <div class="date-q-item" data-val="7d">Last 7 days</div>
-          <div class="date-q-item" data-val="30d">Last 30 days</div>
-          <div class="date-q-item" data-val="90d">Last 90 days</div>
+  <div class="query-bar">
+    <div class="query-bar-main">
+      <div class="qb-left">
+        <button class="qb-saved" title="Saved queries">📂</button>
+        <input type="text" id="dqlInput" class="qb-input" placeholder='Search — rule.level:[12 TO 15] OR data.win.system.eventID:"4625"' spellcheck="false" />
+        <span class="qb-lang">DQL</span>
+      </div>
+      <div class="qb-right">
+        <div class="qb-date">
+          <div class="date-q-wrap">
+            <button class="date-q-btn" onclick="toggleQuickSelect()" title="Date quick select">📅</button>
+            <div class="date-q-menu" id="dQMenu">
+              <div class="date-q-item" data-val="15m">Last 15 minutes</div>
+              <div class="date-q-item" data-val="1h">Last 1 hour</div>
+              <div class="date-q-item active" data-val="24h">Last 24 hours</div>
+              <div class="date-q-item" data-val="7d">Last 7 days</div>
+              <div class="date-q-item" data-val="30d">Last 30 days</div>
+              <div class="date-q-item" data-val="90d">Last 90 days</div>
+            </div>
+          </div>
+          <span class="date-sep">|</span>
+          <input class="date-in" id="dStartDate" value="now-24h" spellcheck="false" title="Start date" />
+          <span class="date-sep">→</span>
+          <input class="date-in" id="dEndDate" value="now" spellcheck="false" title="End date" />
+          <select class="qb-limit" id="dLimit"><option>20</option><option selected>50</option><option>100</option><option>200</option><option>500</option></select>
         </div>
+        <button class="qb-refresh" onclick="discoverSearch()">⟳ Refresh</button>
       </div>
-      <div class="date-inline">
-        <input class="date-in" id="dStartDate" value="now-24h" spellcheck="false" title="Start date" />
-        <span class="date-sep">→</span>
-        <input class="date-in" id="dEndDate" value="now" spellcheck="false" title="End date" />
-      </div>
-      <select id="dLimit"><option>20</option><option selected>50</option><option>100</option><option>200</option><option>500</option></select>
-      <button class="refresh-btn" onclick="discoverSearch()">⟳ Refresh</button>
+    </div>
+    <div class="filter-bar-wrap">
+      <button class="filter-action-btn" title="Filter actions" onclick="dClearAllFilters()">🔽</button>
+      <div class="filter-bar" id="dFilterBar"></div>
+      <button class="add-filter-btn" onclick="dShowAddFilter()">＋ Add filter</button>
     </div>
   </div>
-  <div class="filter-chips" id="dChips"></div>
   <div class="disc-layout">
     <div class="disc-fields" id="dFields">
       <div class="dfs-source">
@@ -723,13 +763,26 @@ function applyClientFilters(results){
   })
 }
 function renderFilterChips(){
-  if(!dFilters.length){document.getElementById('dChips').innerHTML='';return}
-  document.getElementById('dChips').innerHTML=`<div class="doc-chips">${dFilters.map((f,i)=>{
+  const bar=document.getElementById('dFilterBar')
+  if(!dFilters.length){bar.innerHTML='';return}
+  bar.innerHTML=dFilters.map((f,i)=>{
     const q=isNumericField(f.field)?'':'"'
-    const label=f.type==='exists'?`${f.field}: *`:f.value===''?`${f.field}: <empty>`:`${f.field}: ${q}${f.value}${q}`
-    const icon=f.negate?'⊖':f.type==='exists'?'◉':'⊕'
-    return `<span class="doc-chip">${icon} ${label} <span class="remove" onclick="dRemoveFilter(${i})">×</span></span>`
-  }).join('')}</div>`
+    let valDisplay=f.type==='exists'?'*':f.value===''?'&lt;empty&gt;':`<span class="filter-badge-val">${q}${f.value}${q}</span>`
+    const negHtml=f.negate?'<span class="filter-badge-neg">NOT </span>':''
+    return `<span class="filter-badge${f.negate?' negated':''}">
+      <button class="filter-badge-main" onclick="dRemoveFilter(${i})" title="Remove filter">${negHtml}${f.field}: ${valDisplay}</button>
+      <button class="filter-badge-x" onclick="dRemoveFilter(${i})" title="Delete">✕</button>
+    </span>`
+  }).join('')
+}
+function dClearAllFilters(){dFilters=[];renderFilterChips();discoverSearch()}
+function dShowAddFilter(){
+  const input=prompt('Add filter (e.g. rule.level:7 or -agent.name:chat-bot for NOT):')
+  if(!input)return
+  const m=input.match(/^(-)?(.+?):(.+)$/)
+  if(!m){alert('Invalid format. Use field:value or -field:value');return}
+  const field=m[2].trim(),value=m[3].trim()
+  if(m[1])dFilterOut(field,value);else dFilterFor(field,value)
 }
 function dFilterKey(f){return f.field+'|'+f.value+'|'+f.negate+'|'+(f.type||'phrase')}
 function dRemoveFilter(i){
