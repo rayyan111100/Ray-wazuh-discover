@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wazuh SOC Dashboard</title>
+<style>
+:root{--bg:#0f1923;--bg2:#1a2633;--bg3:#0d151e;--text:#e0e0e0;--text2:#78909c;--border:#263238;--accent:#00bcd4;--hover:#263238;--card-border:#00bcd4;--tbl-hover:#1a2633}
+[data-theme="light"]{--bg:#f5f5f5;--bg2:#ffffff;--bg3:#e8e8e8;--text:#212121;--text2:#757575;--border:#bdbdbd;--accent:#00838f;--hover:#e0e0e0;--card-border:#00838f;--tbl-hover:#f0f0f0}
+@media(prefers-color-scheme:light){
+  [data-theme="system"]{--bg:#f5f5f5;--bg2:#ffffff;--bg3:#e8e8e8;--text:#212121;--text2:#757575;--border:#bdbdbd;--accent:#00838f;--hover:#e0e0e0;--card-border:#00838f;--tbl-hover:#f0f0f0}
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);padding:20px;transition:background .3s,color .3s}
+h1{color:var(--accent);font-weight:300;letter-spacing:1px;display:inline-block}
+.sub{color:var(--text2);font-size:13px;margin-left:12px;display:inline-block}
+.theme-switch{float:right;display:flex;gap:4px;background:var(--bg2);border-radius:8px;padding:3px;border:1px solid var(--border)}
+.theme-switch button{padding:6px 12px;border:none;border-radius:6px;cursor:pointer;font-size:13px;background:0 0;color:var(--text2);transition:.2s}
+.theme-switch button.active{background:var(--accent);color:#fff}
+.tabs{display:flex;gap:4px;margin:16px 0;border-bottom:2px solid var(--border);padding-bottom:0}
+.tab{padding:10px 20px;cursor:pointer;border-radius:6px 6px 0 0;font-size:13px;font-weight:600;color:var(--text2);background:0 0;border:none;transition:.2s}
+.tab:hover{color:var(--text);background:var(--bg2)}
+.tab.active{color:var(--accent);background:var(--bg2);border-bottom:2px solid var(--accent);margin-bottom:-2px}
+.panel{display:none;margin-top:16px}
+.panel.active{display:block}
+.filter-bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.filter-bar button{padding:8px 16px;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:13px;transition:.2s}
+.filter-bar button:hover{transform:translateY(-1px);opacity:.85}
+.crit{background:#d32f2f;color:#fff}.high{background:#e65100;color:#fff}.med{background:#f9a825;color:#000}.low{background:#2e7d32;color:#fff}.all{background:#1565c0;color:#fff}.cust{background:#6a1b9a;color:#fff}.info{background:#00838f;color:#fff}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+.stat-card{background:var(--bg2);border-radius:8px;padding:16px;border-left:4px solid var(--card-border);transition:background .3s}
+.stat-card .label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text2)}
+.stat-card .value{font-size:28px;font-weight:600;color:var(--text);margin-top:4px}
+.results{background:var(--bg3);border-radius:8px;padding:16px;overflow-x:auto;transition:background .3s}
+.results table{width:100%;border-collapse:collapse;font-size:13px}
+.results th{text-align:left;padding:8px;color:var(--accent);border-bottom:2px solid var(--border);white-space:nowrap}
+.results td{padding:8px;border-bottom:1px solid var(--border)}
+.results tr:hover td{background:var(--tbl-hover)}
+.level-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-weight:600;font-size:12px}
+.lvl-15{background:#d32f2f;color:#fff}.lvl-12{background:#e65100;color:#fff}.lvl-7{background:#f9a825;color:#000}.lvl-0{background:#2e7d32;color:#fff}
+.custom-inputs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:end}
+.custom-inputs input,.custom-inputs select{background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:13px;transition:background .3s,color .3s}
+.custom-inputs input::placeholder{color:var(--text2)}
+.custom-inputs label{font-size:12px;color:var(--text2);display:block;margin-bottom:2px}
+.loading{color:var(--text2);font-style:italic;padding:16px}
+.error{color:#f44336;padding:16px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.bar{border-radius:4px;overflow:hidden;background:var(--bg3);height:28px;margin:6px 0;display:flex}
+.bar-fill{height:100%;display:flex;align-items:center;padding-left:8px;font-size:12px;font-weight:600;color:#fff;transition:width .4s}
+.bar-label{display:flex;justify-content:space-between;font-size:13px;color:var(--text);margin-top:8px}
+.geo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.geo-card{background:var(--bg2);border-radius:8px;padding:14px;border-left:4px solid #00838f;transition:background .3s}
+.geo-card .country{font-size:16px;font-weight:600;color:var(--accent)}
+.geo-card .detail{font-size:12px;color:var(--text2);margin-top:4px}
+.disc-layout{display:flex;gap:16px;min-height:60vh}
+.disc-fields{width:260px;flex-shrink:0;background:var(--bg2);border-radius:8px;padding:12px;overflow-y:auto;max-height:calc(100vh - 200px)}
+.disc-fields input{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-size:12px;margin-bottom:8px}
+.dfs-source{display:flex;gap:4px;margin-bottom:10px}
+.dfs-source select{flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:12px;cursor:pointer}
+.dfs-refresh{background:var(--bg3);border:1px solid var(--border);color:var(--accent);border-radius:6px;cursor:pointer;padding:4px 8px;font-size:16px}
+.dfs-refresh:hover{background:var(--hover)}
+.dfs-title{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text2);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.disc-fields .field-row{display:flex;justify-content:space-between;padding:5px 8px;border-radius:4px;cursor:pointer;font-size:12px;transition:.15s}
+.disc-fields .field-row:hover{background:var(--hover)}
+.disc-fields .field-row .count{color:var(--text2);font-size:11px;background:var(--bg3);padding:1px 6px;border-radius:4px}
+.disc-fields .field-row .name{color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px}
+.disc-fields .field-row.selected{background:var(--accent);color:#fff}
+.disc-fields .field-row.selected .name{color:#fff}
+.disc-fields .field-row.selected .count{background:rgba(255,255,255,.2);color:#fff}
+.disc-main{flex:1;min-width:0}
+.disc-top{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.disc-top input[type=text]{flex:1;background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:6px;font-size:14px;font-family:monospace}
+.disc-top input[type=text]:focus{border-color:var(--accent);outline:0}
+.disc-top select{background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:13px}
+.histogram{background:var(--bg2);border-radius:8px;padding:16px;margin-bottom:12px;overflow-x:auto}
+.histogram .bars{display:flex;align-items:end;gap:2px;height:80px}
+.histogram .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;min-width:20px}
+.histogram .bar-col .h-bar{width:100%;background:var(--accent);border-radius:2px 2px 0 0;transition:height .3s;min-height:1px;opacity:.7}
+.histogram .bar-col .h-bar:hover{opacity:1}
+.histogram .bar-col .h-label{font-size:9px;color:var(--text2);margin-top:2px;white-space:nowrap;transform:rotate(-45deg)}
+.disc-toggle{font-size:11px;color:var(--text2);cursor:pointer;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:0 0;margin-bottom:8px;display:inline-block}
+.disc-toggle:hover{background:var(--hover)}
+[data-theme="light"] .crit,[data-theme="system"] .crit{background:#d32f2f}
+
+@media(max-width:700px){.grid-2{grid-template-columns:1fr}.disc-layout{flex-direction:column}.disc-fields{width:100%;max-height:200px}}
+</style>
+</head>
+<body>
+
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+<div><h1>Wazuh SOC Dashboard</h1><span class="sub" id="healthBadge">● checking...</span></div>
+<div class="theme-switch">
+  <button onclick="setTheme('dark')" id="tDark">🌙 Dark</button>
+  <button onclick="setTheme('system')" id="tSys">💻 System</button>
+  <button onclick="setTheme('light')" id="tLight">☀️ Light</button>
+</div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" data-tab="discover">🔎 Discover</button>
+  <button class="tab" data-tab="scan">🔍 Scan</button>
+  <button class="tab" data-tab="search">📝 Search</button>
+  <button class="tab" data-tab="analytics">📊 Analytics</button>
+  <button class="tab" data-tab="indices">🗄️ Indices</button>
+  <button class="tab" data-tab="geo">🌍 Geo</button>
+  <button class="tab" data-tab="health">❤️ Health</button>
+</div>
+
+<div class="panel active" id="panel-discover">
+  <div class="disc-top">
+    <input type="text" id="dqlInput" placeholder='DQL — rule.level:[12 TO 15] OR data.win.system.eventID:"4625"' spellcheck="false" />
+    <select id="dTime"><option value="1h">1h</option><option value="24h" selected>24h</option><option value="7d">7d</option><option value="30d">30d</option><option value="all">All</option></select>
+    <select id="dLimit"><option>20</option><option selected>50</option><option>100</option><option>200</option><option>500</option></select>
+    <button class="all" onclick="discoverSearch()" style="padding:8px 20px">Search</button>
+  </div>
+  <div class="filter-chips" id="dChips"></div>
+  <div class="disc-layout">
+    <div class="disc-fields" id="dFields">
+      <div class="dfs-source">
+        <select id="dIndex" onchange="discoverSearch()">
+          <option>wazuh-alerts-4.x-*</option>
+          <option>wazuh-alerts-*</option>
+          <option>wazuh-archives-*</option>
+        </select>
+        <button class="dfs-refresh" onclick="discoverSearch()" title="Refresh">↻</button>
+      </div>
+      <div class="dfs-title">Available Fields</div>
+      <div class="loading">Loading fields...</div>
+    </div>
+    <div class="disc-main">
+      <div class="histogram" id="dHistogram"></div>
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+        <span id="dTotal" style="color:var(--text2);font-size:14px">0 results</span>
+        <button class="disc-toggle" onclick="discoverAddColumn()">+ Add column</button>
+        <button class="disc-toggle" onclick="discoverSearch()">↻ Refresh</button>
+      </div>
+      <div class="results" id="dResults"><div class="loading">Run a search to see results</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="panel" id="panel-scan">
+  <div class="filter-bar">
+    <button class="crit" onclick="scan('Critical',{min_level:15,max_level:20})">🔴 Critical (15-20)</button>
+    <button class="high" onclick="scan('High',{min_level:12,max_level:14})">🟠 High (12-14)</button>
+    <button class="med" onclick="scan('Medium',{min_level:7,max_level:11})">🟡 Medium (7-11)</button>
+    <button class="low" onclick="scan('Low',{min_level:0,max_level:6})">🟢 Low (0-6)</button>
+    <button class="all" onclick="scan('All',{min_level:1,max_level:15,limit:100})">📊 All</button>
+    <button class="info" onclick="scan('Failed Logons',{event_id:'4625',min_level:12})">🔑 Failed Logons</button>
+    <button class="info" onclick="scan('Logons',{event_id:'4624'})">👤 Logons</button>
+    <button class="cust" onclick="scan('Brute Force',{rule_id:'60204'})">💀 Brute Force</button>
+    <button class="cust" onclick="scan('PowerShell',{event_id:'4104'})">⚡ PowerShell</button>
+    <button class="cust" onclick="scan('Log Cleared',{event_id:'1102'})">🧹 Log Cleared</button>
+  </div>
+  <div class="custom-inputs">
+    <div><label>Event ID</label><input id="evtId" placeholder="4625"/></div>
+    <div><label>Rule ID</label><input id="ruleId" placeholder="60204"/></div>
+    <div><label>Description</label><input id="desc" placeholder="keyword..."/></div>
+    <div><label>Min</label><input id="minLv" value="1" style="width:60px"/></div>
+    <div><label>Max</label><input id="maxLv" value="15" style="width:60px"/></div>
+    <div><label>Limit</label><input id="limit" value="100" style="width:60px"/></div>
+    <button class="cust" onclick="customScan()">🎯 Custom Scan</button>
+  </div>
+  <div class="stats" id="sStats"></div>
+  <div class="results" id="sResults"><div class="loading">Select a filter to scan</div></div>
+</div>
+
+<div class="panel" id="panel-search">
+  <div class="custom-inputs">
+    <div style="flex:1"><label>DQL Query</label><input id="dql" placeholder='rule.level:[12 TO 15] OR data.win.system.eventID:"4625"' style="width:100%"/></div>
+    <div><label>Index</label><select id="sIdx"><option>wazuh-alerts-4.x-*</option></select></div>
+    <div><label>Limit</label><input id="sLimit" value="50" style="width:60px"/></div>
+    <button class="all" onclick="dqlSearch()">🔍 Search</button>
+  </div>
+  <div class="stats" id="qStats"></div>
+  <div class="results" id="qResults"></div>
+</div>
+
+<div class="panel" id="panel-analytics">
+  <div class="custom-inputs">
+    <div><label>Field</label><select id="aField">
+      <option value="rule.level">Rule Level</option>
+      <option value="rule.id">Rule ID</option><option value="agent.name">Agent Name</option>
+      <option value="rule.groups">Rule Groups</option>
+      <option value="data.win.system.eventID">Event ID</option>
+      <option value="data.vulnerability.severity">Vuln Severity</option>
+    </select></div>
+    <div><label>Type</label><select id="aType">
+      <option value="terms">Top Terms</option>
+      <option value="date_histogram">Over Time</option>
+    </select></div>
+    <div><label>Limit</label><input id="aLimit" value="15" style="width:60px"/></div>
+    <button class="all" onclick="loadAggregate()">📊 Load</button>
+  </div>
+  <div class="grid-2">
+    <div><h3 style="color:var(--accent);font-weight:300;margin-bottom:8px">Distribution</h3><div id="aChart"></div></div>
+    <div><h3 style="color:var(--accent);font-weight:300;margin-bottom:8px">Data</h3><div class="results" id="aResults"></div></div>
+  </div>
+</div>
+
+<div class="panel" id="panel-indices">
+  <div class="stats" id="iStats"></div>
+  <div class="results" id="iResults"></div>
+</div>
+
+<div class="panel" id="panel-geo">
+  <div class="stats" id="gStats"></div>
+  <div class="geo-grid" id="gResults"></div>
+</div>
+
+<div class="panel" id="panel-health">
+  <div class="stats" id="hStats"></div>
+  <div class="results" id="hResults"></div>
+</div>
+
+<script>
+const saved=localStorage.getItem('theme')||'dark'
+function setTheme(t){
+  document.documentElement.setAttribute('data-theme',t)
+  localStorage.setItem('theme',t)
+  document.querySelectorAll('.theme-switch button').forEach(b=>b.classList.remove('active'))
+  document.getElementById('t'+t.charAt(0).toUpperCase()+t.slice(1)).classList.add('active')
+}
+setTheme(saved)
+
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'))
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'))
+  t.classList.add('active')
+  document.getElementById('panel-'+t.dataset.tab).classList.add('active')
+}))
+
+async function api(path,params={}){
+  const q=new URLSearchParams()
+  for(const[k,v]of Object.entries(params))if(v!=null&&v!=='')q.set(k,v)
+  const r=await fetch(`/api/${path}?${q}`)
+  if(!r.ok)throw new Error(`HTTP ${r.status}`)
+  return r.json()
+}
+
+async function loadHealth(){
+  try{
+    const h=await api('health')
+    document.getElementById('healthBadge').innerHTML=`● ${h.cluster_status} | ${h.status} | ${h.nodes} node(s)`
+    document.getElementById('hStats').innerHTML=`
+      <div class="stat-card" style="border-left-color:#4caf50"><div class="label">Status</div><div class="value" style="font-size:20px">${h.status}</div></div>
+      <div class="stat-card" style="border-left-color:var(--accent)"><div class="label">Cluster</div><div class="value" style="font-size:20px">${h.cluster}</div></div>
+      <div class="stat-card" style="border-left-color:${h.cluster_status==='green'?'#4caf50':'#ff9800'}"><div class="label">Cluster Status</div><div class="value" style="font-size:20px">${h.cluster_status}</div></div>
+      <div class="stat-card" style="border-left-color:#1565c0"><div class="label">Nodes</div><div class="value">${h.nodes}</div></div>
+      <div class="stat-card" style="border-left-color:var(--text2)"><div class="label">API Version</div><div class="value" style="font-size:20px">${h.api_version}</div></div>
+      <div class="stat-card" style="border-left-color:var(--text2)"><div class="label">Timestamp</div><div class="value" style="font-size:14px">${h.timestamp}</div></div>`
+  }catch(e){document.getElementById('healthBadge').innerHTML='● offline'}
+}
+loadHealth()
+
+async function scan(label,params){
+  document.getElementById('sStats').innerHTML='<div class="loading">⏳ Scanning...</div>'
+  document.getElementById('sResults').innerHTML='<div class="loading">⏳ Loading alerts...</div>'
+  try{
+    const d=await api('scan',params)
+    renderScan(d,label)
+  }catch(e){
+    document.getElementById('sResults').innerHTML=`<div class="error">❌ ${e.message}</div>`
+    document.getElementById('sStats').innerHTML=''
+  }
+}
+
+function customScan(){
+  const p={}
+  const e=document.getElementById('evtId').value.trim()
+  const r=document.getElementById('ruleId').value.trim()
+  const d=document.getElementById('desc').value.trim()
+  if(e)p.event_id=e;if(r)p.rule_id=r;if(d)p.description=d
+  p.min_level=parseInt(document.getElementById('minLv').value)||1
+  p.max_level=parseInt(document.getElementById('maxLv').value)||15
+  p.limit=parseInt(document.getElementById('limit').value)||100
+  scan(e?`Event ${e}`:r?`Rule ${r}`:d?`"${d}"`:'Custom',p)
+}
+
+function renderScan(data,label){
+  const total=data.total||0,alerts=data.results||[]
+  document.getElementById('sStats').innerHTML=`
+    <div class="stat-card" style="border-left-color:var(--accent)"><div class="label">Filter</div><div class="value" style="font-size:18px">${label}</div></div>
+    <div class="stat-card" style="border-left-color:#4caf50"><div class="label">Total</div><div class="value">${total}</div></div>
+    <div class="stat-card" style="border-left-color:#ff9800"><div class="label">Showing</div><div class="value">${alerts.length}</div></div>`
+  if(!alerts.length){document.getElementById('sResults').innerHTML='<div class="loading">✅ No alerts</div>';return}
+  let h=`<table><thead><tr><th>Timestamp</th><th>Level</th><th>Rule</th><th>Event ID</th><th>Description</th><th>Agent</th><th>MITRE</th></tr></thead><tbody>`
+  alerts.slice(0,200).forEach(a=>{
+    const lv=a.rule?.level||0
+    const lvCls=lv>=15?'lvl-15':lv>=12?'lvl-12':lv>=7?'lvl-7':'lvl-0'
+    const mitre=a.rule?.mitre?.id?.join(', ')||''
+    h+=`<tr>
+      <td style="white-space:nowrap;color:var(--text2);font-size:12px">${a['@timestamp']||a.timestamp||''}</td>
+      <td><span class="level-badge ${lvCls}">${lv}</span></td>
+      <td style="color:var(--accent)">${a.rule?.id||''}</td>
+      <td>${a.data?.win?.system?.eventID||a.data?.win?.eventdata?.eventId||''}</td>
+      <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis">${a.rule?.description||''}</td>
+      <td>${a.agent?.name||''}</td>
+      <td style="font-size:11px;color:var(--text2)">${mitre}</td>
+    </tr>`
+  })
+  h+='</tbody></table>'
+  document.getElementById('sResults').innerHTML=h
+}
+
+async function dqlSearch(){
+  const q=document.getElementById('dql').value.trim()
+  const params={q,limit:parseInt(document.getElementById('sLimit').value)||50,index:document.getElementById('sIdx').value}
+  document.getElementById('qStats').innerHTML='<div class="loading">⏳ Searching...</div>'
+  try{
+    const d=await api('search',params)
+    const total=d.total||0,results=d.results||[]
+    document.getElementById('qStats').innerHTML=`
+      <div class="stat-card" style="border-left-color:var(--accent)"><div class="label">Query</div><div class="value" style="font-size:14px">${q||'*'}</div></div>
+      <div class="stat-card" style="border-left-color:#4caf50"><div class="label">Total</div><div class="value">${total}</div></div>
+      <div class="stat-card" style="border-left-color:#ff9800"><div class="label">Showing</div><div class="value">${results.length}</div></div>`
+    if(!results.length){document.getElementById('qResults').innerHTML='<div class="loading">✅ No results</div>';return}
+    let h=`<table><thead><tr><th>Timestamp</th><th>Level</th><th>Rule</th><th>Description</th><th>Agent</th></tr></thead><tbody>`
+    results.slice(0,200).forEach(a=>{
+      const lv=a.rule?.level||0
+      const lvCls=lv>=15?'lvl-15':lv>=12?'lvl-12':lv>=7?'lvl-7':'lvl-0'
+      h+=`<tr>
+        <td style="white-space:nowrap;color:var(--text2);font-size:12px">${a['@timestamp']||a.timestamp||''}</td>
+        <td><span class="level-badge ${lvCls}">${lv}</span></td>
+        <td style="color:var(--accent)">${a.rule?.id||''}</td>
+        <td>${(a.rule?.description||'').substring(0,80)}</td>
+        <td>${a.agent?.name||''}</td>
+      </tr>`
+    })
+    h+='</tbody></table>'
+    document.getElementById('qResults').innerHTML=h
+  }catch(e){document.getElementById('qResults').innerHTML=`<div class="error">❌ ${e.message}</div>`}
+}
+
+async function loadAggregate(){
+  const field=document.getElementById('aField').value
+  const type=document.getElementById('aType').value
+  const limit=parseInt(document.getElementById('aLimit').value)||15
+  const params={field,type,limit}
+  try{
+    const d=await api('aggregate',params)
+    const buckets=d.buckets||[]
+    document.getElementById('aResults').innerHTML=buckets.length?`<table><thead><tr><th>Key</th><th>Count</th></tr></thead><tbody>${
+      buckets.map(b=>`<tr><td>${b.key}</td><td>${b.doc_count}</td></tr>`).join('')}</tbody></table>`:'<div class="loading">No data</div>'
+    renderChart(buckets,field,type)
+  }catch(e){document.getElementById('aResults').innerHTML=`<div class="error">${e.message}</div>`}
+}
+
+function renderChart(buckets,field,type){
+  if(!buckets.length){document.getElementById('aChart').innerHTML='<div class="loading">No data</div>';return}
+  const max=Math.max(...buckets.map(b=>b.doc_count))
+  const colors=['#d32f2f','#e65100','#f9a825','#2e7d32','#1565c0','#6a1b9a','#00838f','#4caf50','#ff9800','var(--accent)','var(--text2)','#e91e63']
+  let html=type==='date_histogram'?'<div class="loading">Time chart</div>':buckets.map((b,i)=>{
+    const pct=(b.doc_count/max*100).toFixed(0)
+    return `<div class="bar-label"><span>${b.key}</span><span>${b.doc_count.toLocaleString()}</span></div>
+      <div class="bar"><div class="bar-fill" style="width:${pct}%;background:${colors[i%colors.length]}">${pct}%</div></div>`
+  }).join('')
+  document.getElementById('aChart').innerHTML=html
+}
+
+async function loadIndices(){
+  document.getElementById('iStats').innerHTML='<div class="loading">⏳ Loading indices...</div>'
+  try{
+    const d=await api('indices')
+    const patterns=d.patterns||[]
+    const total=d.total_indices||0
+    document.getElementById('iStats').innerHTML=`
+      <div class="stat-card" style="border-left-color:#4caf50"><div class="label">Total Indices</div><div class="value">${total}</div></div>
+      <div class="stat-card" style="border-left-color:var(--accent)"><div class="label">Patterns</div><div class="value">${patterns.length}</div></div>`
+    let h=`<table><thead><tr><th>Pattern</th><th>Indices</th><th>Total Docs</th></tr></thead><tbody>`
+    patterns.forEach(p=>{
+      h+=`<tr><td style="color:var(--accent)">${p.pattern}</td><td>${p.count}</td><td>${p.total_docs.toLocaleString()}</td></tr>`
+    })
+    h+='</tbody></table>'
+    document.getElementById('iResults').innerHTML=h
+  }catch(e){document.getElementById('iResults').innerHTML=`<div class="error">${e.message}</div>`}
+}
+loadIndices()
+
+async function loadGeo(){
+  document.getElementById('gStats').innerHTML='<div class="loading">⏳ Loading geo data...</div>'
+  try{
+    const d=await api('geo',{limit:100})
+    const results=d.results||[]
+    document.getElementById('gStats').innerHTML=`
+      <div class="stat-card" style="border-left-color:#00838f"><div class="label">Geo Locations</div><div class="value">${results.length}</div></div>`
+    if(!results.length){document.getElementById('gResults').innerHTML='<div class="loading">No geo data found</div>';return}
+    document.getElementById('gResults').innerHTML=results.map(r=>`
+      <div class="geo-card">
+        <div class="country">${r.country||'Unknown'}</div>
+        <div class="detail">📍 ${r.city||'N/A'} | ${r.ip||'N/A'}</div>
+        <div class="detail">🛡️ Agent: ${r.agent||'N/A'} | Level: ${r.level||0}</div>
+        <div class="detail">🕐 ${r.timestamp||''}</div>
+      </div>`).join('')
+  }catch(e){document.getElementById('gResults').innerHTML=`<div class="error">${e.message}</div>`}
+}
+loadGeo()
+
+// ==================== DISCOVER ====================
+let dColumns=['@timestamp','rule.id','rule.level','rule.description','agent.name']
+let dFieldList=[],dFieldCache=null
+
+async function discoverLoadFields(){
+  try{
+    const idx=document.getElementById('dIndex').value
+    const d=await api('fields',{index:idx})
+    dFieldList=d.fields||[]
+    dFieldCache=dFieldList
+    renderFields(dFieldList)
+  }catch(e){document.getElementById('dFields').innerHTML=`<div class="dfs-source">${dsHTML()}</div><div class="dfs-title">Available Fields</div><div class="error">${e.message}</div>`}
+}
+
+function dsHTML(){const v=document.getElementById('dIndex')?.value||'wazuh-alerts-4.x-*';return `<select id="dIndex" onchange="discoverSearch()"><option ${v==='wazuh-alerts-4.x-*'?'selected':''}>wazuh-alerts-4.x-*</option><option ${v==='wazuh-alerts-*'?'selected':''}>wazuh-alerts-*</option><option ${v==='wazuh-archives-*'?'selected':''}>wazuh-archives-*</option></select><button class="dfs-refresh" onclick="discoverSearch()" title="Refresh">↻</button>`}
+
+function renderFields(fields){
+  const sel=document.getElementById('dFields')
+  if(!fields||!fields.length){sel.innerHTML=dsHTML()+`<div class="dfs-title">Available Fields</div><div class="loading">No fields</div>`;return}
+  sel.innerHTML=dsHTML()+`<div class="dfs-title">Available Fields (${fields.length})</div>
+    <input id="dFieldSearch" oninput="filterFields(this.value)" placeholder="Search fields..." />
+    ${dColumns.map(c=>`<div class="field-row selected" onclick="toggleFieldColumn('${c}')"><span class="name">${c}</span><span class="count">column</span></div>`).join('')}
+    <div style="border-top:1px solid var(--border);margin:6px 0"></div>
+    ${fields.filter(f=>!dColumns.includes(f.name)).slice(0,150).map(f=>`
+      <div class="field-row" onclick="toggleFieldColumn('${f.name}')" title="Click to add column">
+        <span class="name">${f.name}</span>
+        <span class="count">${f.type}</span>
+      </div>`).join('')}`
+}
+
+function filterFields(val){
+  const q=val.toLowerCase()
+  const filtered=q?dFieldList.filter(f=>f.name.toLowerCase().includes(q)):dFieldList
+  renderFields(filtered)
+}
+
+function toggleFieldColumn(name){
+  const idx=dColumns.indexOf(name)
+  if(idx>=0)dColumns.splice(idx,1);else dColumns.push(name)
+  if(dColumns.length<1)dColumns=['@timestamp']
+  renderFields(dFieldList)
+  discoverSearch()
+}
+
+function discoverAddColumn(){
+  const f=prompt('Enter field name (e.g. rule.level):')
+  if(f&&f.trim()){dColumns.push(f.trim());renderFields(dFieldList);discoverSearch()}
+}
+
+async function discoverSearch(){
+  const q=document.getElementById('dqlInput').value.trim()
+  const timeRange=document.getElementById('dTime').value
+  const limit=parseInt(document.getElementById('dLimit').value)||50
+  const index=document.getElementById('dIndex').value
+  const params={q,limit,index}
+
+  if(timeRange!=='all'){
+    const now=new Date()
+    const m=parseInt(timeRange)
+    if(timeRange.includes('h'))params.start_date=new Date(now-m*3600000).toISOString()
+    else if(timeRange.includes('d'))params.start_date=new Date(now-m*86400000).toISOString()
+    params.end_date=now.toISOString()
+  }
+
+  try{
+    document.getElementById('dResults').innerHTML='<div class="loading">⏳ Searching...</div>'
+    const d=await api('search',params)
+    const total=d.total||0,results=d.results||[]
+    document.getElementById('dTotal').innerHTML=`<b>${total.toLocaleString()}</b> results (${results.length} shown)`
+    document.getElementById('dResults').innerHTML=discoverRenderTable(results)
+    discoverLoadHistogram(params)
+    discoverLoadFields()
+  }catch(e){document.getElementById('dResults').innerHTML=`<div class="error">❌ ${e.message}</div>`}
+}
+
+function discoverRenderTable(results){
+  if(!results.length)return '<div class="loading">No results</div>'
+  let h=`<table><thead><tr><th style="width:30px"></th>${dColumns.map(c=>`<th onclick="dColumns.splice(dColumns.indexOf('${c}'),1);renderFields(dFieldList);discoverSearch()" style="cursor:pointer" title="Remove column">${c} ×</th>`).join('')}</tr></thead><tbody>`
+  results.slice(0,200).forEach((a,i)=>{
+    const rowId='dr'+i
+    const jsonStr=JSON.stringify(a,null,2).replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    h+=`<tr onclick="document.getElementById('${rowId}').style.display=document.getElementById('${rowId}').style.display==='none'?'table-row':'none'" style="cursor:pointer">`
+    h+=`<td style="color:var(--text2);font-size:12px">▶</td>`
+    h+=dColumns.map(c=>{
+      let v=resolveField(a,c),td=''
+      if(c==='rule.level'){const l=parseInt(v)||0;td=`<span class="level-badge ${l>=15?'lvl-15':l>=12?'lvl-12':l>=7?'lvl-7':'lvl-0'}">${v}</span>`}
+      else if(c==='@timestamp'||c==='timestamp')td=`<span style="white-space:nowrap;color:var(--text2);font-size:12px">${(v||'').substring(0,19)}</span>`
+      else{if(v&&String(v).length>80)v=String(v).substring(0,80)+'…';td=v||'—'}
+      return `<td>${td}</td>`
+    }).join('')+'</tr>'
+    h+=`<tr id="${rowId}" style="display:none"><td colspan="${dColumns.length+1}" style="padding:0"><pre style="background:var(--bg3);padding:16px;margin:0;font-size:12px;overflow-x:auto;border-radius:0;max-height:400px">${jsonStr}</pre></td></tr>`
+  })
+  return h+'</tbody></table>'
+}
+function resolveField(obj,path){
+  try{return path.split('.').reduce((o,p)=>o?.[p],obj)??''}catch(e){return ''}
+}
+
+async function discoverLoadHistogram(params){
+  try{
+    const hParams={...params,field:'@timestamp',type:'date_histogram',interval:'1h',limit:48}
+    delete hParams.q;delete hParams.limit
+    const d=await api('aggregate',{...hParams,field:'@timestamp',type:'date_histogram',limit:48})
+    const buckets=d.buckets||[]
+    if(!buckets.length){document.getElementById('dHistogram').innerHTML='<div style="color:var(--text2);font-size:13px">No histogram data</div>';return}
+    const max=Math.max(...buckets.map(b=>b.doc_count))
+    document.getElementById('dHistogram').innerHTML=`<div class="bars">${buckets.slice(-48).map(b=>{
+      const pct=Math.max((b.doc_count/max*100),1)
+      const time=new Date(b.key).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})
+      return `<div class="bar-col" title="${b.key_as_string||new Date(b.key).toISOString()}: ${b.doc_count}"><div class="h-bar" style="height:${pct}%"></div><div class="h-label">${time}</div></div>`
+    }).join('')}</div>`
+  }catch(e){document.getElementById('dHistogram').innerHTML=''}
+}
+
+setTimeout(discoverSearch,500)
+</script>
+</body>
+</html>
