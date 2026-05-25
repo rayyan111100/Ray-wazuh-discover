@@ -205,11 +205,11 @@ td:hover .cell-filters{display:inline-flex;gap:1px}
               <div class="date-q-item" data-val="90d">Last 90 days</div>
             </div>
           </div>
-          <div class="qb-date-pretty" id="dDatePretty" onclick="toggleDateExpanded()">
+          <div class="qb-date-pretty" id="dDatePretty" onclick="toggleDateExpanded()" style="display:none">
             <span class="qb-date-label" id="dDateLabel">Last 24 hours</span>
             <span class="qb-date-toggle" id="dDateToggle">Show dates</span>
           </div>
-          <div class="qb-date-expanded" id="dDateExpanded">
+          <div class="qb-date-expanded" id="dDateExpanded" style="display:flex">
             <input class="date-in" id="dStartDate" value="now-24h" spellcheck="false" title="Start date" />
             <span class="date-sep">→</span>
             <input class="date-in" id="dEndDate" value="now" spellcheck="false" title="End date" />
@@ -600,12 +600,12 @@ function setQuickDate(val){
 }
 function toggleDateExpanded(){
   const p=document.getElementById('dDatePretty'),e=document.getElementById('dDateExpanded')
-  const isPretty=p.style.display!=='none'
-  p.style.display=isPretty?'none':''
-  e.style.display=isPretty?'':'none'
+  const showingExpanded=e.style.display!=='none'
+  p.style.display=showingExpanded?'':'none'
+  e.style.display=showingExpanded?'none':'flex'
 }
 function updateDateLabel(val){
-  const names={15m:'15 minutes',1h:'1 hour',24h:'24 hours',7d:'7 days',30d:'30 days',90d:'90 days'}
+  const names={'15m':'15 minutes','1h':'1 hour','24h':'24 hours','7d':'7 days','30d':'30 days','90d':'90 days'}
   document.getElementById('dDateLabel').textContent='Last '+(names[val]||val)
 }
 document.addEventListener('click',function(e){
