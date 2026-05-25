@@ -492,8 +492,16 @@ async function discoverSearch(){
   try{
     document.getElementById('dResults').innerHTML='<div class="loading">⏳ Searching...</div>'
     const d=await api('search',params)
-    const total=d.total||0,results=d.results||[]
-    document.getElementById('dTotal').innerHTML=`<b>${total.toLocaleString()}</b> results (${results.length} shown)`
+    const total=d.total||0
+    let results=d.results||[]
+    const haveClientFilters=dFilters.some(f=>f.negate||f.type==='exists')
+    if(haveClientFilters){
+      const before=results.length
+      results=applyClientFilters(results)
+      document.getElementById('dTotal').innerHTML=`<b>${total.toLocaleString()}</b> results (<b>${results.length}</b> shown of ${before})`
+    }else{
+      document.getElementById('dTotal').innerHTML=`<b>${total.toLocaleString()}</b> results (${results.length} shown)`
+    }
     document.getElementById('dResults').innerHTML=discoverRenderTable(results)
     discoverLoadHistogram(params)
     discoverLoadFields()
@@ -554,6 +562,11 @@ function flattenObj(obj,prefix){
   }
   return result
 }
+function isNumericField(name){
+  if(!dFieldList||!dFieldList.length)return false
+  const f=dFieldList.find(f=>f.name===name)
+  return f?['long','integer','short','byte','float','double','number'].includes(f.type):false
+}
 function getFieldType(name){
   if(!dFieldList||!dFieldList.length)return'string'
   const f=dFieldList.find(f=>f.name===name)
@@ -584,7 +597,6 @@ function renderDocViewer(doc){
         <button class="doc-action-btn" data-act="filterFor" data-field="${fldAttr}" data-value="${valAttr}" title="Filter for value">＋</button>
         <button class="doc-action-btn" data-act="filterOut" data-field="${fldAttr}" data-value="${valAttr}" title="Filter out value">－</button>
         <button class="doc-action-btn" data-act="toggleColumn" data-field="${fldAttr}" data-value="" title="Toggle column in table">⊞</button>
-        <button class="doc-action-btn" data-act="filterExists" data-field="${fldAttr}" data-value="" title="Filter for field present">◉</button>
       </td>
       <td><span class="doc-field-icon">${getTypeIcon(type)}</span><span class="doc-field-name">${fld}</span></td>
       <td class="doc-value">${val.substring(0,600)}</td>
@@ -617,22 +629,30 @@ function switchDocView(id,view){
 function buildDql(){
   const parts=[]
   dFilters.forEach(f=>{
+    if(f.negate||f.type==='exists')return
     const v=String(f.value??'').replace(/"/g,'\\"')
-    const q=/^\d+(\.\d+)?$/.test(v)?'':'"'
-    if(f.type==='exists')parts.push(`_exists_:${f.field}`)
-    else if(f.negate)parts.push(`-${f.field}:${q}${v}${q}`)
-    else parts.push(`${f.field}:${q}${v}${q}`)
+    const q=isNumericField(f.field)?'':'"'
+    parts.push(`${f.field}:${q}${v}${q}`)
   })
   const userQ=document.getElementById('dqlInput').value.trim()
-  if(userQ)parts.push(`(${userQ})`)
+  if(userQ)parts.push(userQ)
   return parts.join(' AND ')
+}
+function applyClientFilters(results){
+  const negs=dFilters.filter(f=>f.negate)
+  const exs=dFilters.filter(f=>f.type==='exists')
+  if(!negs.length&&!exs.length) return results
+  return results.filter(r=>{
+    return negs.every(f=>String(resolveField(r,f.field)??'')!==f.value)
+        && exs.every(f=>{const v=resolveField(r,f.field);return v!==null&&v!==undefined&&v!==''})
+  })
 }
 function renderFilterChips(){
   if(!dFilters.length){document.getElementById('dChips').innerHTML='';return}
   document.getElementById('dChips').innerHTML=`<div class="doc-chips">${dFilters.map((f,i)=>{
-    const q=/^\d+(\.\d+)?$/.test(f.value)?'':'"'
+    const q=isNumericField(f.field)?'':'"'
     const label=f.type==='exists'?`${f.field}: *`:`${f.field}: ${q}${f.value}${q}`
-    const icon=f.negate?'⊖':'⊕'
+    const icon=f.negate?'⊖':f.type==='exists'?'◉':'⊕'
     return `<span class="doc-chip">${icon} ${label} <span class="remove" onclick="dRemoveFilter(${i})">×</span></span>`
   }).join('')}</div>`
 }
@@ -670,7 +690,6 @@ document.addEventListener('click',function(e){
   const value=btn.dataset.value
   if(act==='filterFor')dFilterFor(field,value)
   else if(act==='filterOut')dFilterOut(field,value)
-  else if(act==='filterExists')dFilterExists(field)
   else if(act==='toggleColumn')dToggleColumn(field)
 })
 
