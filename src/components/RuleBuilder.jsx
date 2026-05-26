@@ -70,7 +70,7 @@ function FieldPicker({ value, onChange }) {
   return (
     <div className="relative flex-1 min-w-0" ref={ref}>
       <input className="w-full bg-transparent outline-none text-soc-stext dark:text-soc-darkstext py-1.5 text-[11px] sm:text-xs" placeholder="field"
-        value={focusedOnce ? query : value} onFocus={() => { setOpen(true); if (!focusedOnce) setFocusedOnce(true) }}
+        value={focusedOnce ? query : value} onFocus={() => { setOpen(true); if (!focusedOnce) { setFocusedOnce(true); setQuery(value || '') } }}
         onChange={e => { setQuery(e.target.value); onChange(e.target.value); setOpen(true) }} />
       {open && (
         <div className="absolute left-0 top-full mt-1 w-full min-w-[200px] bg-white dark:bg-[#1a1d27] border border-[#e5e7eb] dark:border-[#2d3140] rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
@@ -152,7 +152,8 @@ export default function RuleBuilder() {
   }
 
   function delCondition(idx) {
-    setEditing(prev => prev ? { ...prev, conditions: prev.conditions.filter((_, i) => i !== idx) } : null)
+    if (!editing || editing.conditions.length <= 1) return
+    setEditing({ ...editing, conditions: editing.conditions.filter((_, i) => i !== idx) })
     setDirty(true)
   }
 
@@ -314,9 +315,9 @@ export default function RuleBuilder() {
                               <div className="hidden sm:block text-[#d1d5db] dark:text-[#4b5563] self-center">|</div>
                               <input className="flex-1 bg-transparent outline-none text-soc-stext dark:text-soc-darkstext py-1 text-[11px] sm:text-xs w-full sm:w-auto" placeholder="value" value={cond.value} onChange={e => updCondition(idx, { value: e.target.value })} />
                             </div>
-                            <button onClick={() => delCondition(idx)} className="p-1.5 mt-0.5 sm:mt-0 text-[#9ca3af] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all shrink-0">
+                            {editing.conditions.length > 1 && <button onClick={() => delCondition(idx)} className="p-1.5 mt-0.5 sm:mt-0 text-[#9ca3af] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all shrink-0">
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                            </button>
+                            </button>}
                           </div>
                         </div>
                       ))}
