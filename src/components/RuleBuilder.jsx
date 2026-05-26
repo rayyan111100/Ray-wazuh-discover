@@ -25,7 +25,7 @@ function cleanRule(r) {
     ...r, name: r.name || '',
     conditionLogic: r.conditionLogic === 'OR' ? 'OR' : 'AND',
     conditions: (r.conditions || []).map(c => ({ ...c, field: c.field || 'rule.description', operator: c.operator || 'contains', value: c.value || '', logic: c.logic || 'AND' })),
-    actions: (r.actions || []).map(a => ({ ...a, params: a.params || {} })),
+    actions: (r.actions?.length ? r.actions : [{ type: 'alert', params: { severity: 'high', level: null, message: '' } }]).map(a => ({ ...a, params: a.params || {} })),
     enabled: r.enabled !== false
   }
 }
@@ -122,7 +122,8 @@ export default function RuleBuilder() {
   }
 
   function delAction(idx) {
-    setEditing(prev => prev ? { ...prev, actions: prev.actions.filter((_, i) => i !== idx) } : null)
+    if (!editing || editing.actions.length <= 1) return
+    setEditing({ ...editing, actions: editing.actions.filter((_, i) => i !== idx) })
     setDirty(true)
   }
 
@@ -276,10 +277,6 @@ export default function RuleBuilder() {
                     <svg className="w-3.5 h-3.5 text-[#9ca3af]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     <span className="text-[11px] uppercase font-semibold text-[#9ca3af] tracking-wider">Actions</span>
                   </div>
-                  <button onClick={addAction} className="gbtn text-xs flex items-center gap-1 bg-[#f3f4f6] dark:bg-[#2d3140] hover:bg-[#e5e7eb] dark:hover:bg-[#374151]">
-                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
-                    Add
-                  </button>
                 </div>
                 <div className="p-4 space-y-2.5">
                   {editing.actions.map((act, idx) => (
@@ -310,11 +307,9 @@ export default function RuleBuilder() {
                           </span>
                         )}
                       </div>
-                      {editing.actions.length > 1 && (
-                        <button onClick={() => delAction(idx)} className="p-1.5 text-[#9ca3af] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all shrink-0">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                        </button>
-                      )}
+                      <button onClick={() => delAction(idx)} className="p-1.5 text-[#9ca3af] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all shrink-0">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                      </button>
                     </div>
                   ))}
                 </div>

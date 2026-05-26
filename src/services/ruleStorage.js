@@ -34,6 +34,7 @@ export function createRule(defaults = {}) {
     name: defaults.name || 'New Rule',
     enabled: true,
     conditionLogic: 'AND',
+    actions: [{ type: 'alert', params: { severity: 'high', level: null, message: '' } }],
     conditions: [],
     ignoreIps: [],
     actions: [{ type: 'alert', params: { severity: 'high', level: null, message: '' } }],
