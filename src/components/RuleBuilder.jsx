@@ -27,7 +27,7 @@ const COMMON_FIELDS = [
   '@timestamp', 'timestamp', 'id', '_id', '_index'
 ]
 
-const OPERATORS = ['equals', 'contains', 'regex', 'startsWith', 'endsWith', 'gt', 'lt', 'inList', 'exists']
+const OPERATORS = ['equals', 'contains', 'regex', 'startsWith', 'endsWith', 'gt', 'gte', 'lt', 'lte', 'inList', 'exists']
 const SEVERITIES = ['critical', 'high', 'medium', 'low', 'info']
 
 const SEV_COLORS = { critical: { dot: '#dc2626', bg: '#fef2f2', darkBg: '#dc26261a', text: '#dc2626', darkText: '#fca5a5' }, high: { dot: '#ea580c', bg: '#fff7ed', darkBg: '#ea580c1a', text: '#ea580c', darkText: '#fdba74' }, medium: { dot: '#ca8a04', bg: '#fefce8', darkBg: '#ca8a041a', text: '#ca8a04', darkText: '#fde047' }, low: { dot: '#16a34a', bg: '#f0fdf4', darkBg: '#16a34a1a', text: '#16a34a', darkText: '#86efac' }, info: { dot: '#2563eb', bg: '#eff6ff', darkBg: '#3b82f61a', text: '#2563eb', darkText: '#93c5fd' } }
@@ -116,16 +116,22 @@ function SeverityDot({ sev }) {
 
 function conditionsToQuery(conditions, logic) {
   const parts = conditions.map(c => {
+    const neg = c.negate ? 'NOT ' : ''
     const v = c.value?.replace(/[\\"'(){}[\]^~:]/g, '\\$&')
     if (!v && c.operator !== 'exists') return null
     switch (c.operator) {
-      case 'equals': return `${c.field}:${v}`
-      case 'contains': return `${c.field}:*${v}*`
-      case 'startsWith': return `${c.field}:${v}*`
-      case 'endsWith': return `${c.field}:*${v}`
-      case 'gt': return `${c.field}:[${v} TO *]`
-      case 'lt': return `${c.field}:[* TO ${v}]`
-      case 'exists': return `_exists_:${c.field}`
+      case 'equals': return `${neg}${c.field}:${v}`
+      case 'contains': return `${neg}${c.field}:*${v}*`
+      case 'startsWith': return `${neg}${c.field}:${v}*`
+      case 'endsWith': return `${neg}${c.field}:*${v}`
+      case 'gt': return `${neg}${c.field}:[${v} TO *]`
+      case 'gte': return `${neg}${c.field}:[${v} TO *]`
+      case 'lt': return `${neg}${c.field}:[* TO ${v}]`
+      case 'lte': return `${neg}${c.field}:[* TO ${v}]`
+      case 'exists': return `${neg}_exists_:${c.field}`
+      case 'regex':
+      case 'inList':
+        return null
       default: return null
     }
   }).filter(Boolean)
@@ -161,6 +167,7 @@ export default function RuleBuilder() {
   const [testJson, setTestJson] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [fields, setFieldsState] = useState(getFields)
+  const [extractedFields, setExtractedFields] = useState(null)
 
   const refresh = useCallback(() => setRules(getAllRules()), [])
 
@@ -251,18 +258,97 @@ export default function RuleBuilder() {
     return 'info'
   }
 
+  function setNested(obj, path, val) {
+    const parts = path.split('.')
+    let cur = obj
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (!cur[parts[i]] || typeof cur[parts[i]] !== 'object') cur[parts[i]] = {}
+      cur = cur[parts[i]]
+    }
+    cur[parts[parts.length - 1]] = val
+  }
+
+  function generateMockDocs(conditions) {
+    const base = {
+      '@timestamp': new Date().toISOString(),
+      rule: { id: 100001, description: 'Test Event', level: 5, groups: ['test'] },
+      agent: { name: 'test-agent', id: '001', ip: '192.168.1.10' },
+      location: '/var/log/test.log',
+      manager: { name: 'wazuh-manager' },
+      decoder: { name: 'json' },
+      full_log: 'Test log entry for rule validation'
+    }
+    const matchDoc = JSON.parse(JSON.stringify(base))
+    for (const c of conditions) {
+      if (c.operator === 'exists') { setNested(matchDoc, c.field, 'present') }
+      else if (c.operator === 'inList') { setNested(matchDoc, c.field, c.value.split(',')[0].trim()) }
+      else if (c.operator === 'gt' || c.operator === 'gte') {
+        const v = parseFloat(c.value) + 1
+        setNested(matchDoc, c.field, isNaN(v) ? c.value : v)
+      } else if (c.operator === 'lt' || c.operator === 'lte') {
+        const v = Math.max(0, parseFloat(c.value) - 1)
+        setNested(matchDoc, c.field, isNaN(v) ? c.value : v)
+      } else { setNested(matchDoc, c.field, c.value) }
+    }
+    const noMatchDoc = {
+      '@timestamp': new Date(Date.now() - 60000).toISOString(),
+      rule: { id: 999999, description: 'Unrelated Event', level: 3, groups: ['other'] },
+      agent: { name: 'other-agent', id: '999', ip: '10.0.0.1' },
+      location: '/var/log/other.log',
+      manager: { name: 'wazuh-manager' },
+      decoder: { name: 'json' },
+      full_log: 'This event does not match any conditions'
+    }
+    return [matchDoc, noMatchDoc]
+  }
+
+  function findMissingInterpolationFields(template, doc) {
+    if (!template) return []
+    const matches = [...template.matchAll(/\{\{([^}]+)\}\}/g)]
+    return matches.map(m => m[1].trim()).filter(f => {
+      const v = resolveField(doc, f)
+      return v === '' || v === `{{${f}}}`
+    })
+  }
+
   async function runTestBatch() {
     if (!editing) return
     setTestLoading(true); setTestResults(null)
     try {
       const q = conditionsToQuery(editing.conditions, editing.conditionLogic)
-      const d = await api('search', { limit: 20, sort: '@timestamp', order: 'desc', q })
-      if (!d?.results?.length) { setTestResults({ error: 'No matching alerts found for your conditions' }); setTestLoading(false); return }
-      const results = d.results.map(doc => {
+      let docs = []
+
+      try {
+        const d = await api('search', { limit: 20, sort: '@timestamp', order: 'desc', q })
+        if (d?.results?.length) docs = d.results
+      } catch {}
+
+      if (!docs.length && q) {
+        try {
+          const d = await api('search', { limit: 20, sort: '@timestamp', order: 'desc' })
+          if (d?.results?.length) docs = d.results
+        } catch {}
+      }
+
+      if (!docs.length && testJson.trim()) {
+        try {
+          const parsed = JSON.parse(testJson)
+          docs = Array.isArray(parsed) ? parsed : [parsed]
+        } catch {}
+      }
+
+      if (!docs.length) {
+        docs = generateMockDocs(editing.conditions)
+      }
+
+      if (!docs.length) { setTestResults({ error: 'No data to test against' }); setTestLoading(false); return }
+
+      const results = docs.map(doc => {
         const result = evalRule(editing, doc)
         const actions = result.matched ? (editing.actions || []).map(a => ({
           ...a, computedSeverity: a.type === 'alert' ? computeSeverity(a, doc) : null,
-          interpolated: a.type === 'alert' ? interpolateMessage(a.params?.message || '', doc) : null
+          interpolated: a.type === 'alert' ? interpolateMessage(a.params?.message || '', doc) : null,
+          missingFields: a.type === 'alert' ? findMissingInterpolationFields(a.params?.message, doc) : []
         })) : []
         return { timestamp: resolveField(doc, '@timestamp'), ruleDesc: resolveField(doc, 'rule.description'), ruleLevel: resolveField(doc, 'rule.level'), ...result, actions }
       })
@@ -271,15 +357,31 @@ export default function RuleBuilder() {
     setTestLoading(false)
   }
 
+  function extractFromJson() {
+    if (!testJson.trim()) return
+    try {
+      const doc = JSON.parse(testJson)
+      const paths = extractFieldPaths(doc).filter(p => !p.startsWith('_') && p !== 'id')
+      setExtractedFields(paths)
+      storeFields(paths)
+      setFieldsState(getFields())
+    } catch {}
+  }
+
   function runTestJson() {
     if (!editing || !testJson.trim()) return
     setTestLoading(true); setTestResults(null)
     try {
       const doc = JSON.parse(testJson)
+      const paths = extractFieldPaths(doc).filter(p => !p.startsWith('_') && p !== 'id')
+      setExtractedFields(paths)
+      storeFields(paths)
+      setFieldsState(getFields())
       const result = evalRule(editing, doc)
       const actions = result.matched ? (editing.actions || []).map(a => ({
         ...a, computedSeverity: a.type === 'alert' ? computeSeverity(a, doc) : null,
-        interpolated: a.type === 'alert' ? interpolateMessage(a.params?.message || '', doc) : null
+        interpolated: a.type === 'alert' ? interpolateMessage(a.params?.message || '', doc) : null,
+        missingFields: a.type === 'alert' ? findMissingInterpolationFields(a.params?.message, doc) : []
       })) : []
       setTestResults([{ timestamp: resolveField(doc, '@timestamp'), ruleDesc: resolveField(doc, 'rule.description'), ruleLevel: resolveField(doc, 'rule.level'), ...result, actions }])
     } catch (e) { setTestResults({ error: 'Invalid JSON: ' + e.message }) }
@@ -479,9 +581,34 @@ export default function RuleBuilder() {
                   </div>
                 </div>
                 <div className="p-3 sm:p-4 space-y-3">
-                  <textarea className="ginput w-full p-2 text-[10px] font-mono leading-relaxed resize-none" rows={3}
-                    placeholder={`Paste alert JSON here to test instantly...`}
-                    value={testJson} onChange={e => setTestJson(e.target.value)} />
+                  <div className="flex gap-2">
+                    <textarea className="ginput flex-1 p-2 text-[10px] font-mono leading-relaxed resize-none" rows={3}
+                      placeholder={`Paste alert JSON here to test instantly...`}
+                      value={testJson} onChange={e => { setTestJson(e.target.value); setExtractedFields(null) }} />
+                    {testJson.trim() && (
+                      <button onClick={extractFromJson}
+                        className="gbtn shrink-0 self-start text-[10px] px-2 py-1.5 bg-[#f3f4f6] dark:bg-[#2d3140] hover:bg-[#e5e7eb] dark:hover:bg-[#374151] transition-all flex flex-col items-center gap-0.5">
+                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                        <span>Fields</span>
+                      </button>
+                    )}
+                  </div>
+                  {extractedFields && extractedFields.length > 0 && (
+                    <div className="bg-[#f9fafb] dark:bg-[#0f1117] rounded-lg border border-[#e5e7eb] dark:border-[#2d3140] p-2">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[9px] uppercase font-semibold text-[#9ca3af] tracking-wider">{extractedFields.length} fields</span>
+                        <span className="text-[8px] text-[#9ca3af]">Click to copy</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
+                        {extractedFields.map(f => (
+                          <button key={f} onClick={() => { navigator.clipboard?.writeText(f); }}
+                            className="text-[9px] px-1.5 py-0.5 rounded-full bg-white dark:bg-[#1a1d27] border border-[#e5e7eb] dark:border-[#2d3140] text-soc-stext dark:text-soc-darkstext hover:bg-[#3b82f6] hover:text-white dark:hover:bg-[#3b82f6] transition-colors font-mono">
+                            {f}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {testResults && !Array.isArray(testResults) && (
                     <div className="flex items-center gap-2 text-xs text-red-500 bg-red-50 dark:bg-red-900/10 rounded-lg px-3 py-2">
                       <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -531,6 +658,20 @@ export default function RuleBuilder() {
                                       {a.type === 'alert' ? 'CREATE' : 'IGNORE'}
                                       {a.type === 'alert' && a.interpolated && <span className="opacity-70">: {a.interpolated}</span>}
                                     </span>
+                                  ))}
+                                </div>
+                              )}
+                              {r.matched && r.actions.some(a => a.missingFields?.length > 0) && (
+                                <div className="flex flex-wrap gap-1 mt-1.5">
+                                  {r.actions.filter(a => a.missingFields?.length > 0).map((a, ai) => (
+                                    <div key={ai} className="flex flex-wrap items-center gap-1 text-[9px]">
+                                      {a.missingFields.map((f, fi) => (
+                                        <span key={fi} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-yellow-50 dark:bg-yellow-900/15 text-yellow-700 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800/30">
+                                          <svg className="w-2.5 h-2.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                                          <span>field not found: <code className="font-mono underline decoration-dotted">{f}</code></span>
+                                        </span>
+                                      ))}
+                                    </div>
                                   ))}
                                 </div>
                               )}

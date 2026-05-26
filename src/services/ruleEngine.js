@@ -17,8 +17,12 @@ function evalOperator(fieldVal, operator, condVal) {
       return String(fv).toLowerCase().endsWith(String(condVal).toLowerCase())
     case 'gt':
       return Number(fv) > Number(condVal)
+    case 'gte':
+      return Number(fv) >= Number(condVal)
     case 'lt':
       return Number(fv) < Number(condVal)
+    case 'lte':
+      return Number(fv) <= Number(condVal)
     case 'inList': {
       const list = String(condVal).split(',').map(s => s.trim())
       return list.includes(String(fv))
