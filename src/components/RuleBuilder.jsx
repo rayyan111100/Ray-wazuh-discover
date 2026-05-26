@@ -22,7 +22,7 @@ function cleanRule(r) {
   return {
     ...r, name: r.name || '',
     conditionLogic: r.conditionLogic === 'OR' ? 'OR' : 'AND',
-    conditions: (r.conditions || []).map(c => ({ ...c, field: c.field || 'rule.description', operator: c.operator || 'contains', value: c.value || '' })),
+    conditions: (r.conditions || []).map(c => ({ ...c, field: c.field || 'rule.description', operator: c.operator || 'contains', value: c.value || '', logic: c.logic || 'AND' })),
     actions: (r.actions || []).map(a => ({ ...a, params: a.params || {} })),
     enabled: r.enabled !== false
   }
@@ -161,12 +161,6 @@ export default function RuleBuilder() {
                   Enabled
                 </label>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="w-20"><label className="block text-[10px] uppercase font-semibold text-[#9ca3af] mb-1">Logic</label>
-                  <select className="ginput w-full" value={editing.conditionLogic} onChange={e => patch({ conditionLogic: e.target.value })}>
-                    <option value="AND">AND</option><option value="OR">OR</option>
-                  </select></div>
-              </div>
               <div className="gcard p-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[10px] uppercase font-semibold text-[#9ca3af]">Conditions</span>
@@ -176,8 +170,10 @@ export default function RuleBuilder() {
                 <div className="space-y-1.5">
                   {editing.conditions.map((cond, idx) => (
                     <div key={cond.id} className="flex items-center gap-2 text-xs">
-                      {idx > 0 && <span className="text-[10px] font-bold text-soc-blue w-8 shrink-0 text-center">{editing.conditionLogic}</span>}
-                      {idx === 0 && <span className="w-8 shrink-0" />}
+                      {idx > 0 ? (
+                        <button onClick={() => { const l = cond.logic === 'AND' ? 'OR' : 'AND'; updCondition(idx, { logic: l }) }}
+                          className="text-[10px] font-bold text-soc-blue w-8 shrink-0 text-center hover:underline">{cond.logic}</button>
+                      ) : <span className="w-8 shrink-0" />}
                       <input className="ginput flex-1" list="flist" value={cond.field} onChange={e => updCondition(idx, { field: e.target.value })} placeholder="field" />
                       <select className="ginput w-24 shrink-0" value={cond.operator} onChange={e => updCondition(idx, { operator: e.target.value })}>
                         {OPERATORS.map(o => <option key={o} value={o}>{o}</option>)}

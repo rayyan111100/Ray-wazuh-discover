@@ -38,7 +38,7 @@ export function evalCondition(condition, doc) {
 }
 
 export function evalRule(rule, doc) {
-  const { conditions, conditionLogic, actions } = rule
+  const { conditions, actions } = rule
 
   if (!conditions || conditions.length === 0) {
     return { matched: true, details: [], actions: actions || [] }
@@ -49,9 +49,10 @@ export function evalRule(rule, doc) {
     matched: evalCondition(c, doc)
   }))
 
-  const matched = conditionLogic === 'AND'
-    ? results.every(r => r.matched)
-    : results.some(r => r.matched)
+  const matched = results.reduce((acc, r, idx) => {
+    if (idx === 0) return r.matched
+    return (r.condition.logic || 'AND') === 'OR' ? acc || r.matched : acc && r.matched
+  }, false)
 
   return { matched, details: results, actions: matched ? (actions || []) : [] }
 }
