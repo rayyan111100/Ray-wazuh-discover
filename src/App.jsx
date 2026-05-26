@@ -34,7 +34,7 @@ function DashboardShell() {
 
   useEffect(() => {
     if (tab === 'discover') doSearch()
-  }, [tab])
+  }, [])
 
   return (
     <div className="h-screen flex flex-col bg-soc-bg dark:bg-soc-darkbg overflow-hidden">
