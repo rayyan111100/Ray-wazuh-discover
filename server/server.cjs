@@ -7,6 +7,8 @@ const axios = require('axios');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const API = process.env.WAZUH_API_URL;
+const WUSER = process.env.WAZUH_USER;
+const WPASS = process.env.WAZUH_PASSWORD;
 
 app.use(cors());
 app.use(express.json());
@@ -17,7 +19,42 @@ const publicPath = path.join(__dirname, '..', 'public');
 app.use(express.static(distPath));
 app.use(express.static(publicPath));
 
+// --- Wazuh API JWT Auth ---
+let token = null;
+let tokenExpiry = 0;
+
+async function authenticate() {
+  if (!WUSER || !WPASS) {
+    console.warn('⚠ WAZUH_USER or WAZUH_PASSWORD not set — using no auth');
+    return;
+  }
+  try {
+    const creds = Buffer.from(`${WUSER}:${WPASS}`).toString('base64');
+    const { data } = await axios.post(`${API}/security/user/authenticate`, null, {
+      headers: { Authorization: `Basic ${creds}`, 'Content-Type': 'application/json' }
+    });
+    token = data.data?.token || data.token;
+    tokenExpiry = Date.now() + 300000; // 5 min, refresh before expiry
+    console.log('✔ Wazuh API authenticated');
+  } catch (err) {
+    token = null;
+    console.error('✖ Auth failed:', err.response?.data?.message || err.message);
+  }
+}
+
 const api = axios.create({ baseURL: API, timeout: 120000 });
+
+// Attach auth token to every request
+api.interceptors.request.use(async config => {
+  if (WUSER && WPASS) {
+    if (!token || Date.now() > tokenExpiry) await authenticate();
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Auto-auth on startup
+if (WUSER && WPASS) authenticate();
 
 async function proxy(endpoint, params, res) {
   try {
