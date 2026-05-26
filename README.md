@@ -177,6 +177,11 @@ server/
 | Added | Custom level override (0-15) in rule action params |
 | Added | Expanded field selector with 50+ Wazuh fields + free-text input with datalist autocomplete |
 | Added | Wazuh API JWT authentication — auto token acquisition via WAZUH_USER/WAZUH_PASSWORD in .env |
+| Fixed | Rule engine — added missing `gte`/`lte` operators |
+| Fixed | Batch test — fallback chain: API → pasted JSON → mock data when API unavailable |
+| Added | Extract Fields button — parses pasted JSON and lists all available field paths |
+| Added | Missing field warning — highlights wrong interpolation paths in test results |
+| Fixed | `conditionsToQuery` — now respects `negate` flag and `gte`/`lte` operators |
 
 ---
 
