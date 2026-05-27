@@ -1,3 +1,48 @@
+function parsePfFilterlog(msg) {
+  const parts = msg.split(',')
+  if (parts.length < 20) return null
+  const fields = {
+    rule_number: parts[0],
+    sub_rule: parts[1],
+    anchor: parts[2],
+    tracker: parts[3],
+    interface: parts[4],
+    reason: parts[5],
+    action: parts[6],
+    direction: parts[7],
+    ip_version: parts[8],
+    tos: parts[9],
+    ecn: parts[10],
+    ttl: parts[11],
+    packet_id: parts[12],
+    offset: parts[13],
+    flags: parts[14],
+    protocol_id: parts[15],
+    protocol: parts[16],
+    length: parts[17],
+    src_ip: parts[18],
+    dst_ip: parts[19]
+  }
+  if (parts.length > 20) fields.src_port = parts[20]
+  if (parts.length > 21) fields.dst_port = parts[21]
+  if (parts.length > 22) fields.data_length = parts[22]
+  if (parts.length > 23) fields.tcp_flags = parts[23]
+  if (parts.length > 24) fields.seq_number = parts[24]
+  if (parts.length > 25) fields.ack_number = parts[25]
+  if (parts.length > 26) fields.window = parts[26]
+  if (parts.length > 27) fields.tcp_options = parts.slice(27).join(',')
+  return fields
+}
+
+function tryPfSenseFilterlog(raw) {
+  const m = raw.match(/filterlog(?:\[\d+\])?:\s*(.+)$/i)
+  if (m) {
+    const fields = parsePfFilterlog(m[1])
+    if (fields) return { format: 'pfsense_filterlog', fields }
+  }
+  return null
+}
+
 function tryJson(raw) {
   try {
     const parsed = JSON.parse(raw)
@@ -193,7 +238,7 @@ function flattenObj(obj, prefix = '') {
   return result
 }
 
-const PARSERS = [tryJson, trySyslog, tryFirewall, tryWebLog, trySshLog, tryKv, tryWinEvt, tryCsv, tryGeneric]
+const PARSERS = [tryPfSenseFilterlog, tryJson, trySyslog, tryFirewall, tryWebLog, trySshLog, tryKv, tryWinEvt, tryCsv, tryGeneric]
 
 export function decodeLog(raw) {
   if (!raw || typeof raw !== 'string') return { format: 'unknown', fields: {}, raw }

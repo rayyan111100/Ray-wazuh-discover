@@ -16,6 +16,7 @@ const FORMAT_COLORS = {
   pfSense: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 ring-1 ring-amber-400/30',
   netfilter: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300 ring-1 ring-yellow-400/30',
   windows_event: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300 ring-1 ring-cyan-400/30',
+  pfsense_filterlog: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 ring-1 ring-amber-400/30',
   delimited: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300 ring-1 ring-gray-400/30',
   generic: 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300 ring-1 ring-pink-400/30',
   unknown: 'bg-gray-100 text-gray-500 dark:bg-gray-800/40 dark:text-gray-400 ring-1 ring-gray-400/20'
