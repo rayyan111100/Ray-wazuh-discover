@@ -10,7 +10,8 @@ const NAV_ITEMS = [
   { key: 'geo', label: 'Geo', icon: '\uD83C\uDF0D' },
   { key: 'health', label: 'Health', icon: '\u2764\uFE0F' },
   { key: 'rules', label: 'Rules', icon: '\u2699\uFE0F' },
-  { key: 'ruleview', label: 'RuleView', icon: '\uD83D\uDCCB' }
+  { key: 'ruleview', label: 'RuleView', icon: '\uD83D\uDCCB' },
+  { key: 'decoder', label: 'Decoder', icon: '\uD83D\uDD04' }
 ]
 
 export default function Sidebar({ active, onSelect, collapsed, onToggle }) {

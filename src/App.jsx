@@ -14,6 +14,7 @@ import GeoTab from './tabs/GeoTab'
 import HealthTab from './tabs/HealthTab'
 import RulesTab from './tabs/RulesTab'
 import RuleViewTab from './tabs/RuleViewTab'
+import DecoderTab from './tabs/DecoderTab'
 
 const TABS = {
   discover: DiscoverTab,
@@ -25,7 +26,8 @@ const TABS = {
   geo: GeoTab,
   health: HealthTab,
   rules: RulesTab,
-  ruleview: RuleViewTab
+  ruleview: RuleViewTab,
+  decoder: DecoderTab
 }
 
 function DashboardShell() {
