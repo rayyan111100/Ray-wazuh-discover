@@ -6,7 +6,6 @@ import Sidebar from './components/Sidebar'
 import QueryBar from './components/QueryBar'
 import DiscoverTab from './tabs/DiscoverTab'
 import DashboardTab from './tabs/DashboardTab'
-import ScanTab from './tabs/ScanTab'
 import SecurityHub from './tabs/SecurityHub'
 import SearchTab from './tabs/SearchTab'
 import AnalyticsTab from './tabs/AnalyticsTab'
@@ -20,7 +19,6 @@ import DecoderTab from './tabs/DecoderTab'
 const TABS = {
   discover: DiscoverTab,
   dashboard: DashboardTab,
-  scan: ScanTab,
   securityhub: SecurityHub,
   search: SearchTab,
   analytics: AnalyticsTab,
