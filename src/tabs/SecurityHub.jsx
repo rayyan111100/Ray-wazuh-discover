@@ -20,10 +20,25 @@ const SEV_ICONS = { Critical: '\uD83D\uDD34', High: '\uD83D\uDFE1', Medium: '\uD
 const CHART_COLORS = ['#3b82f6', '#8b5cf6', '#06b6d4', '#22c55e', '#eab308', '#f97316']
 
 const SEV_RANGES = {
-  Critical: 'rule.level:>=12',
-  High: 'rule.level:[7 TO 11]',
-  Medium: 'rule.level:[3 TO 6]',
-  Low: 'rule.level:[1 TO 2]'
+  Critical: '>=12',
+  High: '[7 TO 11]',
+  Medium: '[3 TO 6]',
+  Low: '[1 TO 2]'
+}
+
+function toSeverity(level) {
+  const n = parseInt(level) || 0
+  for (const s of SEV_ORDER) if (n >= SEV_LABELS[s].min) return s
+  return 'Low'
+}
+
+function groupSeverity(buckets) {
+  const map = {}
+  for (const b of buckets) {
+    const s = toSeverity(b.key)
+    map[s] = (map[s] || 0) + b.doc_count
+  }
+  return map
 }
 
 const CustomTooltip = ({ active, payload, label }) => {
@@ -57,12 +72,6 @@ function PulseDot({ color = '#22c55e' }) {
   )
 }
 
-function toSeverity(level) {
-  const n = parseInt(level) || 0
-  for (const s of SEV_ORDER) if (n >= SEV_LABELS[s].min) return s
-  return 'Low'
-}
-
 export default function SecurityHub() {
   const [timeRange, setTimeRange] = useState('now-24h')
   const [data, setData] = useState(null)
@@ -92,8 +101,9 @@ export default function SecurityHub() {
       let q = '*'
       if (effective.length > 0) {
         q = effective.map(f => {
-          const val = /^\d+(\.\d+)?$/.test(String(f.value)) ? f.value : `"${f.value}"`
-          return `${f.field}:${val}`
+          const v = String(f.value)
+          if (/^[[{>=<]/.test(v)) return `${f.field}:${v}`
+          return `${f.field}:${/^\d+(\.\d+)?$/.test(v) ? v : `"${v}"`}`
         }).join(' AND ')
       }
       const res = await api('search', { start_date: tp.start_date, end_date: tp.end_date, q, size: 50, sort: '@timestamp:desc' })
@@ -131,51 +141,19 @@ export default function SecurityHub() {
   const fetchData = useCallback(async () => {
     try {
       const tp = timeParams()
-      const base = { start_date: tp.start_date, end_date: tp.end_date }
-      const safe = (p) => p.catch(() => null)
-
-      const [totalRes, timelineRes, rulesRes, agentsRes, recentRes, ...sevRes] = await Promise.all([
-        safe(api('search', { ...base, size: 0, q: '*' })),
-        safe(api('aggregate', { ...base, field: '@timestamp', type: 'date_histogram', interval: '1h', limit: 48 })),
-        safe(api('search', { ...base, size: 0, q: '*', aggs: JSON.stringify({ rules: { terms: { field: 'rule.id', size: 10 } } }) })),
-        safe(api('search', { ...base, size: 0, q: '*', aggs: JSON.stringify({ agents: { terms: { field: 'agent.name.keyword', size: 10 } } }) })),
-        safe(api('search', { ...base, size: 20, sort: '@timestamp:desc' })),
-        ...Object.values(SEV_RANGES).map(q => safe(api('search', { ...base, size: 0, q })))
-      ])
-
-      const sevCounts = {}
-      Object.keys(SEV_RANGES).forEach((s, i) => { sevCounts[s] = sevRes[i]?.total || 0 })
-
-      const timeline = timelineRes?.buckets ? timelineRes.buckets.map(b => ({
-        time: new Date(b.key).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        alerts: b.doc_count || 0
-      })) : []
-
-      const total = totalRes?.total || 0
-
-      let rules = []
-      if (rulesRes) {
-        try {
-          const r = typeof rulesRes.aggregations === 'string' ? JSON.parse(rulesRes.aggregations) : rulesRes.aggregations
-          rules = (r?.rules?.buckets || []).slice(0, 8)
-        } catch { rules = [] }
-      }
-
-      let agents = []
-      if (agentsRes) {
-        try {
-          const a = typeof agentsRes.aggregations === 'string' ? JSON.parse(agentsRes.aggregations) : agentsRes.aggregations
-          agents = (a?.agents?.buckets || []).slice(0, 8)
-        } catch { agents = [] }
-      }
-
+      const d = await api('dashboard', { index: 'wazuh-alerts-4.x-*', start_date: tp.start_date, end_date: tp.end_date })
       setData({
-        total,
-        severity: sevCounts,
-        timeline,
-        rules,
-        agents,
-        recent: (recentRes?.results || []).slice(0, 20)
+        count24: d.count24 || 0,
+        count7d: d.count7d || 0,
+        count30d: d.count30d || 0,
+        severity: groupSeverity(d.byLevel || []),
+        timeline: (d.timeline || []).map(b => ({
+          time: new Date(b.key).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          alerts: b.doc_count || 0
+        })),
+        rules: (d.topRules || []).slice(0, 8),
+        agents: (d.topAgents || []).slice(0, 8),
+        recent: (d.recent || []).slice(0, 20)
       })
       setError(null)
       setLastUpdated(new Date())
@@ -203,9 +181,9 @@ export default function SecurityHub() {
   const maxRule = Math.max(1, ...topRulesData.map(r => r.count))
   const maxAgent = Math.max(1, ...topAgentsData.map(a => a.count))
 
-  const count24 = data?.total || 0
-  const count7d = data?.total || 0
-  const count30d = data?.total || 0
+  const count24 = data?.count24 || 0
+  const count7d = data?.count7d || 0
+  const count30d = data?.count30d || 0
 
   if (loading) return (
     <div className="space-y-3">
