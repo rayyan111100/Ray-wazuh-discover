@@ -63,7 +63,7 @@ function extractFieldPaths(obj, prefix = '') {
 }
 
 function DocViewer({ doc }) {
-  const { addFilter, doSearch, isDark, toggleColumn, setTab } = useApp()
+  const { addFilter, doSearch, isDark, toggleColumn, setTab, setPendingRuleId } = useApp()
   const [view, setView] = React.useState('table')
   const flat = React.useMemo(() => {
     const flatten = (obj, prefix) => {
@@ -107,6 +107,7 @@ function DocViewer({ doc }) {
       const rule = createRule({ name: 'From event' })
       const patched = { ...rule, conditions }
       updateRule(rule.id, patched)
+      setPendingRuleId(rule.id)
     } catch {}
     setTab('rules')
   }
