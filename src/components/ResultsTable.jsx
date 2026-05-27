@@ -2,6 +2,7 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import { useApp } from '../context/AppContext'
 import { resolveField } from '../utils'
+import { createRule, updateRule } from '../services/ruleStorage'
 
 function LevelBadge({ level }) {
   const lv = parseInt(level) || 0
@@ -49,8 +50,20 @@ const TYPE_TOKENS = {
   null:    { icon: '-',   color: '#7b7b7b' }
 }
 
+function extractFieldPaths(obj, prefix = '') {
+  const paths = []
+  for (const key of Object.keys(obj)) {
+    const p = prefix ? `${prefix}.${key}` : key
+    paths.push(p)
+    if (obj[key] && typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
+      paths.push(...extractFieldPaths(obj[key], p))
+    }
+  }
+  return paths
+}
+
 function DocViewer({ doc }) {
-  const { addFilter, doSearch, isDark, toggleColumn } = useApp()
+  const { addFilter, doSearch, isDark, toggleColumn, setTab } = useApp()
   const [view, setView] = React.useState('table')
   const flat = React.useMemo(() => {
     const flatten = (obj, prefix) => {
@@ -76,6 +89,26 @@ function DocViewer({ doc }) {
   const hFilter = (field, value, negate) => { addFilter(field, value, negate); doSearch() }
   const hExists = (field) => { addFilter(field, '__exists__', false); doSearch() }
 
+  const handleCreateRule = () => {
+    const paths = extractFieldPaths(doc).filter(p => !p.startsWith('_') && p !== 'id' && !p.startsWith('@'))
+    const valFields = paths.slice(0, 10)
+    const conditions = valFields.map(p => ({
+      id: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      field: p,
+      operator: 'equals',
+      value: String(doc[p.split('.').reduce((o, k) => o?.[k], doc) ?? ''])
+    }))
+    try {
+      const stored = JSON.parse(sessionStorage.getItem('ruleFields') || '[]')
+      const merged = [...new Set([...stored, ...paths])].sort((a, b) => a.localeCompare(b))
+      sessionStorage.setItem('ruleFields', JSON.stringify(merged))
+    } catch {}
+    const rule = createRule({ name: 'From event' })
+    const patched = { ...rule, conditions }
+    updateRule(rule.id, patched)
+    setTab('rules')
+  }
+
   const actionBtn = (onClick, title, svg, color = 'text-soc-stext dark:text-soc-darkstext') => (
     <button onClick={onClick} className={`p-0.5 rounded hover:bg-[#1a73e8]/15 ${color} hover:text-[#1a73e8] dark:hover:text-[#8ab4f8] transition-colors`} title={title}>
       {svg}
@@ -87,6 +120,9 @@ function DocViewer({ doc }) {
       <div className="flex border-b border-soc-border/50 dark:border-soc-darkborder/50">
         <button onClick={() => setView('table')} className={`px-3 py-1 text-xs font-medium border-b-2 transition-colors ${view === 'table' ? 'border-[#1a73e8] text-[#1a73e8] dark:border-[#8ab4f8] dark:text-[#8ab4f8]' : 'border-transparent text-soc-stext dark:text-soc-darkstext'}`}>Table</button>
         <button onClick={() => setView('json')} className={`px-3 py-1 text-xs font-medium border-b-2 transition-colors ${view === 'json' ? 'border-[#1a73e8] text-[#1a73e8] dark:border-[#8ab4f8] dark:text-[#8ab4f8]' : 'border-transparent text-soc-stext dark:text-soc-darkstext'}`}>JSON</button>
+        <span className="ml-auto flex items-center pr-1">
+          <button onClick={handleCreateRule} className="px-2 py-0.5 text-[10px] font-medium rounded bg-[#3b82f6] text-white hover:bg-[#2563eb] transition-all" title="Create rule from this event">{'\u2795'} Rule</button>
+        </span>
       </div>
       <div className="max-h-72 overflow-y-auto">
         {view === 'table' ? (
