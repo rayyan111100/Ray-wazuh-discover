@@ -30,6 +30,7 @@ export function AppProvider({ children }) {
   const [refreshValue, setRefreshValue] = useState(0)
   const [refreshUnit, setRefreshUnit] = useState('s')
   const [refreshActive, setRefreshActive] = useState(false)
+  const [pendingRuleId, setPendingRuleId] = useState(null)
   const refreshRef = useRef(null)
 
   const setTheme = useCallback(t => {
@@ -165,7 +166,8 @@ export function AppProvider({ children }) {
     results, total, loading, error,
     fields, setFields, histogram,
     doSearch, loadFields, resolveTimeRange,
-    refreshValue, setRefreshValue, refreshUnit, setRefreshUnit, refreshActive, toggleRefresh
+    refreshValue, setRefreshValue, refreshUnit, setRefreshUnit, refreshActive, toggleRefresh,
+    pendingRuleId, setPendingRuleId
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

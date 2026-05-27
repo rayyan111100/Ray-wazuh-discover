@@ -29,7 +29,7 @@ function FormatBadge({ format }) {
 }
 
 export default function DecoderTab() {
-  const { isDark, setTab } = useApp()
+  const { isDark, setTab, setPendingRuleId } = useApp()
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(false)
   const [query, setQuery] = useState('')
@@ -128,6 +128,7 @@ export default function DecoderTab() {
       })
       const patched = { ...rule, conditions }
       updateRule(rule.id, patched)
+      setPendingRuleId(rule.id)
     } catch {}
     setTab('rules')
     setCopyMsg('Rule created! Switched to Rules tab.')

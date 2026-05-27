@@ -4,6 +4,7 @@ import { getAllRules, createRule, updateRule, deleteRule, toggleRuleEnabled } fr
 import { evalRule, interpolateMessage } from '../services/ruleEngine'
 import { resolveField } from '../utils'
 import { api } from '../api'
+import { useApp } from '../context/AppContext'
 
 function extractFieldPaths(obj, prefix = '') {
   const paths = []
@@ -175,6 +176,7 @@ export default function RuleBuilder() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [fields, setFieldsState] = useState(getFields)
   const [extractedFields, setExtractedFields] = useState(null)
+  const { pendingRuleId, setPendingRuleId } = useApp()
 
   const refresh = useCallback(() => setRules(getAllRules()), [])
 
@@ -200,6 +202,14 @@ export default function RuleBuilder() {
     }
     document.addEventListener('keydown', handleKey); return () => document.removeEventListener('keydown', handleKey)
   }, [editing, dirty])
+
+  useEffect(() => {
+    if (pendingRuleId) {
+      const r = getAllRules().find(x => x.id === pendingRuleId)
+      if (r) handleSelect(pendingRuleId)
+      setPendingRuleId(null)
+    }
+  }, [pendingRuleId])
 
   function handleSave() {
     if (!editing?.id) return
