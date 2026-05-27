@@ -116,7 +116,12 @@ export default function DecoderTab() {
         operator: 'equals',
         value: Array.isArray(v) ? v[0] : String(v)
       }))
-    const doc = { full_log: logs[selectedIdx]?.full_log || '', decoded: decodedFields, decoded_format: decoded.format }
+    const paths = Object.keys(decodedFields).map(k => `decoded.${k}`)
+    try {
+      const stored = JSON.parse(sessionStorage.getItem('ruleFields') || '[]')
+      const merged = [...new Set([...stored, ...paths])].sort((a, b) => a.localeCompare(b))
+      sessionStorage.setItem('ruleFields', JSON.stringify(merged))
+    } catch {}
     const rule = createRule({
       name: `Decode: ${decoded.format} — ${Object.keys(decodedFields).slice(0, 3).join(', ')}${Object.keys(decodedFields).length > 3 ? '...' : ''}`
     })
