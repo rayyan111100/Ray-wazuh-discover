@@ -7,6 +7,8 @@ const NAV_ITEMS = [
   { key: 'securityhub', label: 'Security Hub', icon: '\uD83D\uDD0D' },
   { key: 'health', label: 'Health', icon: '\u2764\uFE0F' },
   { key: 'rules', label: 'Rules', icon: '\u2699\uFE0F' },
+  { key: 'rulegroups', label: 'Groups', icon: '\uD83D\uDC65' },
+  { key: 'grouprules', label: 'Group Rules', icon: '\uD83D\uDCCA' },
   { key: 'ruleview', label: 'RuleView', icon: '\uD83D\uDCCB' },
   { key: 'decoder', label: 'Decoder', icon: '\uD83D\uDD04' }
 ]

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { AppProvider, useApp } from './context/AppContext'
+import { ToastProvider } from './context/ToastContext'
 import Navbar from './components/Navbar'
 import Sidebar from './components/Sidebar'
 import QueryBar from './components/QueryBar'
@@ -13,6 +14,9 @@ import IndicesTab from './tabs/IndicesTab'
 import GeoTab from './tabs/GeoTab'
 import HealthTab from './tabs/HealthTab'
 import RulesTab from './tabs/RulesTab'
+import { migrateRules } from './services/rulePersistence'
+import RuleGroupsTab from './tabs/RuleGroupsTab'
+import GroupRulesTab from './tabs/GroupRulesTab'
 import RuleViewTab from './tabs/RuleViewTab'
 import DecoderTab from './tabs/DecoderTab'
 
@@ -26,6 +30,8 @@ const TABS = {
   geo: GeoTab,
   health: HealthTab,
   rules: RulesTab,
+  rulegroups: RuleGroupsTab,
+  grouprules: GroupRulesTab,
   ruleview: RuleViewTab,
   decoder: DecoderTab
 }
@@ -35,6 +41,11 @@ function DashboardShell() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const TabComponent = TABS[tab] || DiscoverTab
   const showQueryBar = tab === 'discover' || tab === 'search' || tab === 'ruleview'
+
+  useEffect(() => {
+    const migrated = migrateRules()
+    if (migrated > 0) console.log(`Migrated ${migrated} rules: added groupIds`)
+  }, [])
 
   useEffect(() => {
     if (tab === 'discover') doSearch()
@@ -70,7 +81,9 @@ function DashboardShell() {
 export default function App() {
   return (
     <AppProvider>
-      <DashboardShell />
+      <ToastProvider>
+        <DashboardShell />
+      </ToastProvider>
     </AppProvider>
   )
 }

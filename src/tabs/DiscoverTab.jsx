@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext'
 import ResultsTable from '../components/ResultsTable'
 import FieldSidebar from '../components/FieldSidebar'
 import Histogram from '../components/Histogram'
-import { getAllRules } from '../services/ruleStorage'
+import { getAllRules, getAllGroups } from '../services/ruleStorage'
 import { evaluateAllRules, interpolateMessage } from '../services/ruleEngine'
 
 export default function DiscoverTab() {
@@ -14,27 +14,46 @@ export default function DiscoverTab() {
   const [matchedCount, setMatchedCount] = useState(0)
   const [ruleBreakdown, setRuleBreakdown] = useState({})
   const [ruleSevMap, setRuleSevMap] = useState({})
+  const [groupBreakdown, setGroupBreakdown] = useState({})
+  const [groupColorMap, setGroupColorMap] = useState({})
+  const [groupFilter, setGroupFilter] = useState([])
+  const [showGroupFilter, setShowGroupFilter] = useState(false)
+
+  const allGroups = getAllGroups()
+  const groupMap = Object.fromEntries(allGroups.map(g => [g.id, g]))
 
   useEffect(() => {
     if (!applyRules || results.length === 0) {
-      setRuleMatches({}); setMatchedCount(0); setRuleBreakdown({}); setRuleSevMap({})
+      setRuleMatches({}); setMatchedCount(0); setRuleBreakdown({}); setRuleSevMap({}); setGroupBreakdown({}); setGroupColorMap({})
       return
     }
     try {
       const rules = getAllRules().filter(r => r.enabled)
-      if (!rules.length) { setRuleMatches({}); setMatchedCount(0); setRuleBreakdown({}); setRuleSevMap({}); return }
-      const matchMap = {}; const breakdown = {}; const sevMap = {}; let mCount = 0
+      if (!rules.length) { setRuleMatches({}); setMatchedCount(0); setRuleBreakdown({}); setRuleSevMap({}); setGroupBreakdown({}); setGroupColorMap({}); return }
+      const matchMap = {}; const breakdown = {}; const sevMap = {}; const gBreakdown = {}; const gColorMap = {}; let mCount = 0
       results.forEach((doc, idx) => {
         const evalResult = evaluateAllRules(rules, doc)
         if (evalResult.matched) {
           const top = evalResult.matches[0]; const action = top.actions?.[0]
           const rName = top.rule.name; const sev = action?.params?.severity || 'info'
           const msg = interpolateMessage(action?.params?.message || '', doc)
-          matchMap[idx] = { ruleName: rName, severity: sev, level: action?.params?.level || null, message: msg, priority: top.rule.priority, overwritten: evalResult.overwritten }
+          const gids = top.rule.groupIds || []
+          const groupNames = gids.map(gid => groupMap[gid]?.name || '').filter(Boolean)
+          const groupColors = gids.map(gid => groupMap[gid]?.color || '#6b7280').filter(Boolean)
+          matchMap[idx] = {
+            ruleName: rName, severity: sev, level: action?.params?.level || null,
+            message: msg, priority: top.rule.priority, overwritten: evalResult.overwritten,
+            groupIds: gids, groupNames, groupColors
+          }
           breakdown[rName] = (breakdown[rName] || 0) + 1; sevMap[rName] = sev; mCount++
+          for (const gid of gids) {
+            gBreakdown[gid] = (gBreakdown[gid] || 0) + 1
+            if (groupMap[gid]) gColorMap[gid] = groupMap[gid].color
+          }
         }
       })
       setRuleMatches(matchMap); setMatchedCount(mCount); setRuleBreakdown(breakdown); setRuleSevMap(sevMap)
+      setGroupBreakdown(gBreakdown); setGroupColorMap(gColorMap)
     } catch {}
   }, [results, applyRules])
 
@@ -46,9 +65,14 @@ export default function DiscoverTab() {
     info: 'bg-gray-100 text-gray-600 dark:bg-gray-800/40 dark:text-gray-400 ring-1 ring-gray-400/20'
   })[sev] || ''
 
+  const filteredIds = Object.entries(ruleMatches).filter(([idx, m]) => {
+    if (groupFilter.length === 0) return true
+    return m.groupIds.some(gid => groupFilter.includes(gid))
+  }).map(([idx]) => parseInt(idx))
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.12 }} className="space-y-2">
-      <div className="flex items-center gap-3 px-1 py-1 text-xs">
+      <div className="flex items-center gap-3 px-1 py-1 text-xs flex-wrap">
         <div className="flex items-center gap-1.5">
           <span className={`text-[10px] uppercase font-semibold ${isDark ? 'text-soc-darkstext' : 'text-soc-stext'}`}>Query</span>
           <span className="text-soc-blue dark:text-blue-400 font-mono">{dql || filters.length ? 'Filtered' : '*'}</span>
@@ -83,12 +107,57 @@ export default function DiscoverTab() {
             <>
               <span className="text-soc-text dark:text-soc-darktext">
                 <b>{matchedCount}</b>/{results.length} matched
+                {groupFilter.length > 0 && <span className="ml-1 text-[#3b82f6]">(filtered)</span>}
               </span>
               {Object.entries(ruleBreakdown).map(([name, cnt]) => (
                 <span key={name} className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${sevBadgeStyle(ruleSevMap[name] || 'info')}`}>
                   {name}: {cnt}
                 </span>
               ))}
+              {Object.entries(groupBreakdown).length > 0 && (
+                <div className="relative inline-flex items-center gap-1">
+                  <button onClick={() => setShowGroupFilter(!showGroupFilter)}
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-white/60 dark:bg-black/20 text-[#6b7280] hover:bg-white dark:hover:bg-black/30 ring-1 ring-[#e5e7eb] dark:ring-[#2d3140] transition-colors">
+                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                    Groups
+                    {groupFilter.length > 0 && <span className="ml-0.5 text-[#3b82f6]">({groupFilter.length})</span>}
+                  </button>
+                  {showGroupFilter && (
+                    <>
+                      <div className="fixed inset-0 z-30" onClick={() => setShowGroupFilter(false)} />
+                      <div className="absolute left-0 top-full mt-1 z-40 bg-white dark:bg-[#1a1d27] border border-[#e5e7eb] dark:border-[#2d3140] rounded-lg shadow-xl py-1 min-w-[160px]">
+                        {allGroups.map(g => {
+                          const active = groupFilter.includes(g.id)
+                          return (
+                            <label key={g.id} className="w-full text-left px-3 py-1.5 text-[10px] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] text-soc-stext dark:text-soc-darkstext flex items-center gap-2 cursor-pointer transition-colors">
+                              <input type="checkbox" checked={active} onChange={() => setGroupFilter(prev => active ? prev.filter(id => id !== g.id) : [...prev, g.id])}
+                                className="w-3 h-3 rounded border-[#d1d5db] text-[#3b82f6] focus:ring-[#3b82f6]/30" />
+                              <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
+                              <span className="flex-1 truncate">{g.name}</span>
+                              <span className="text-[#9ca3af]">{groupBreakdown[g.id] || 0}</span>
+                            </label>
+                          )
+                        })}
+                        {groupFilter.length > 0 && (
+                          <div className="border-t border-[#e5e7eb] dark:border-[#2d3140] px-2 py-1">
+                            <button onClick={() => setGroupFilter([])} className="w-full text-center text-[9px] py-1 rounded text-[#6b7280] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] transition-colors">Clear filter</button>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                  {Object.entries(groupBreakdown).map(([gid, cnt]) => {
+                    const g = groupMap[gid]
+                    if (!g) return null
+                    return (
+                      <span key={gid} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-medium text-white"
+                        style={{ backgroundColor: g.color }}>
+                        {g.name}: {cnt}
+                      </span>
+                    )
+                  })}
+                </div>
+              )}
             </>
           ) : (
             <span className="text-soc-stext dark:text-soc-darkstext">No rules matched</span>
@@ -97,7 +166,13 @@ export default function DiscoverTab() {
       )}
       <div className="flex gap-3 flex-col lg:flex-row">
         <div className="flex-1 min-w-0">
-          <ResultsTable ruleMatches={applyRules ? ruleMatches : null} />
+          <ResultsTable
+            ruleMatches={applyRules ? (groupFilter.length > 0
+              ? Object.fromEntries(Object.entries(ruleMatches).filter(([idx]) => filteredIds.includes(parseInt(idx))))
+              : ruleMatches
+            ) : null}
+            groupMap={groupMap}
+          />
         </div>
         <div className="w-full lg:w-60 shrink-0">
           <FieldSidebar />

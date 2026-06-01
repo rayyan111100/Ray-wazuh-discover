@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getAllRules, createRule, updateRule, deleteRule, toggleRuleEnabled } from '../services/ruleStorage'
+import { getAllRules, createRule, updateRule, deleteRule, toggleRuleEnabled, getAllGroups } from '../services/ruleStorage'
+import { addRulesToGroup } from '../services/ruleGroupManager'
+import GroupBulkActions from './GroupBulkActions'
 import { evalRule, interpolateMessage } from '../services/ruleEngine'
 import { resolveField } from '../utils'
 import { api } from '../api'
 import { useApp } from '../context/AppContext'
+import { useToast } from '../context/ToastContext'
 
 function extractFieldPaths(obj, prefix = '') {
   const paths = []
@@ -165,7 +168,7 @@ function storeFields(list) {
   try { sessionStorage.setItem('ruleFields', JSON.stringify(merged)) } catch {}
 }
 
-export default function RuleBuilder() {
+export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }) {
   const [rules, setRules] = useState([])
   const [selectedId, setSelectedId] = useState(null)
   const [editing, setEditing] = useState(null)
@@ -176,9 +179,17 @@ export default function RuleBuilder() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [fields, setFieldsState] = useState(getFields)
   const [extractedFields, setExtractedFields] = useState(null)
+  const [selectedRuleIds, setSelectedRuleIds] = useState([])
+  const [sortBy, setSortBy] = useState('name')
+  const [sortOrder, setSortOrder] = useState('asc')
+  const [addToGroupRuleId, setAddToGroupRuleId] = useState(null)
   const { pendingRuleId, setPendingRuleId } = useApp()
+  const toast = useToast()
 
-  const refresh = useCallback(() => setRules(getAllRules()), [])
+  const refresh = useCallback(() => {
+    setRules(getAllRules())
+    setSelectedRuleIds([])
+  }, [])
 
   useEffect(() => { refresh() }, [refresh])
 
@@ -234,6 +245,26 @@ export default function RuleBuilder() {
   function handleDelete() {
     if (!editing?.id) return
     deleteRule(editing.id); setSelectedId(null); setEditing(null); setDirty(false); refresh()
+  }
+
+  function toggleRuleSelection(id) {
+    setSelectedRuleIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  function toggleSelectAll() {
+    if (visibleRules.every(r => selectedRuleIds.includes(r.id))) {
+      setSelectedRuleIds([])
+    } else {
+      setSelectedRuleIds(visibleRules.map(r => r.id))
+    }
+  }
+
+  function quickAddToGroup(ruleId, groupId) {
+    addRulesToGroup(groupId, [ruleId])
+    refresh()
+    const g = allGroups.find(x => x.id === groupId)
+    toast.success(`Added rule to group "${g?.name || groupId}"`)
+    setAddToGroupRuleId(null)
   }
 
   function patch(p) { setEditing(prev => prev ? { ...prev, ...p } : null); setDirty(true) }
@@ -406,11 +437,31 @@ export default function RuleBuilder() {
   }
 
   const allRules = getAllRules()
+  const allGroups = getAllGroups()
+  const groupMap = Object.fromEntries(allGroups.map(g => [g.id, g]))
+  const visibleRules = (filterGroupIds.length > 0
+    ? allRules.filter(r => (r.groupIds || []).some(gid => filterGroupIds.includes(gid)))
+    : allRules
+  ).sort((a, b) => {
+    let cmp = 0
+    switch (sortBy) {
+      case 'name': cmp = a.name.localeCompare(b.name); break
+      case 'date': cmp = (a.updatedAt || a.createdAt || '').localeCompare(b.updatedAt || b.createdAt || ''); break
+      case 'status': cmp = (a.enabled === b.enabled ? 0 : a.enabled ? -1 : 1); break
+      case 'group': {
+        const ag = (a.groupIds || []).length ? groupMap[a.groupIds[0]]?.name || '' : ''
+        const bg = (b.groupIds || []).length ? groupMap[b.groupIds[0]]?.name || '' : ''
+        cmp = ag.localeCompare(bg)
+        break
+      }
+    }
+    return sortOrder === 'desc' ? -cmp : cmp
+  })
   const sidebarWidth = sidebarOpen ? 'w-56 lg:w-56' : 'w-0 lg:w-0'
 
   return (
     <div className="flex flex-col h-full bg-[#f8f9fc] dark:bg-[#0e0f14]">
-      <header className="flex items-center gap-2 px-3 sm:px-4 py-2 text-xs border-b border-[#e5e7eb] dark:border-[#2d3140] bg-white dark:bg-[#16181f]">
+      <header className="flex items-center gap-2 px-3 sm:px-4 py-2 text-xs border-b border-[#e5e7eb] dark:border-[#2d3140] bg-white dark:bg-[#16181f] flex-wrap">
         <button onClick={() => setSidebarOpen(o => !o)} className="p-1 -ml-1 rounded-lg hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] transition-colors shrink-0"
           title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}>
           <svg className="w-4 h-4 text-[#6b7280]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -421,8 +472,50 @@ export default function RuleBuilder() {
           <svg className="w-3.5 h-3.5 text-[#3b82f6]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9M16.376 3.622a1 1 0 013.002 3.002L7.368 18.635a2 2 0 01-.855.506l-2.872.838a.5.5 0 01-.62-.62l.838-2.872a2 2 0 01.506-.854z"/></svg>
           <span className="hidden sm:inline">Rules Engine</span>
         </span>
-        <span className="text-[#9ca3af] dark:text-[#6b7280] ml-1">{allRules.length} rules, {allRules.filter(r => r.enabled).length} enabled</span>
-        <span className="ml-auto hidden sm:flex items-center gap-1 text-[9px] text-[#9ca3af]"><Kbd>⌘S</Kbd> to save</span>
+        <span className="text-[#9ca3af] dark:text-[#6b7280] ml-1 shrink-0">
+          {filterGroupIds.length > 0 ? `${visibleRules.length} of ` : ''}{allRules.length} rules, {visibleRules.filter(r => r.enabled).length} enabled
+          {filterGroupIds.length > 0 && <span className="ml-1 text-[#3b82f6]">(filtered)</span>}
+        </span>
+
+        {allGroups.length > 0 && (
+          <div className="flex items-center gap-1 overflow-x-auto max-w-[200px] sm:max-w-none">
+            {allGroups.map(g => {
+              const cnt = allRules.filter(r => (r.groupIds || []).includes(g.id)).length
+              const active = filterGroupIds.includes(g.id)
+              return (
+                <button key={g.id} onClick={() => { const upd = active ? filterGroupIds.filter(id => id !== g.id) : [...filterGroupIds, g.id]; onGroupFilterChange && onGroupFilterChange(upd) }}
+                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-medium transition-all whitespace-nowrap ${
+                    active ? 'text-white shadow-sm' : 'bg-[#f3f4f6] dark:bg-[#2d3140] text-[#6b7280] dark:text-[#9ca3af] hover:bg-[#e5e7eb] dark:hover:bg-[#374151]'
+                  }`}
+                  style={active ? { backgroundColor: g.color } : {}}>
+                  <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ backgroundColor: active ? 'white' : g.color }} />
+                  {g.name}
+                  <span className="opacity-70">({cnt})</span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        <div className="ml-auto flex items-center gap-1.5 shrink-0">
+          <div className="relative">
+            <select value={sortBy} onChange={e => setSortBy(e.target.value)}
+              className="bg-[#f3f4f6] dark:bg-[#2d3140] border border-transparent rounded-lg px-2 py-1 text-[10px] outline-none text-[#6b7280] dark:text-[#9ca3af] cursor-pointer appearance-none pr-5">
+              <option value="name">Name</option>
+              <option value="date">Date</option>
+              <option value="status">Status</option>
+              <option value="group">Group</option>
+            </select>
+            <svg className="absolute right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-[#9ca3af] pointer-events-none" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+          </div>
+          <button onClick={() => setSortOrder(o => o === 'asc' ? 'desc' : 'asc')}
+            className="p-1 rounded hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] text-[#6b7280] transition-colors">
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              {sortOrder === 'asc' ? <path d="M8 7l4-4 4 4M12 3v18"/> : <path d="M8 17l4 4 4-4M12 21V3"/>}
+            </svg>
+          </button>
+          <span className="hidden sm:flex items-center gap-1 text-[9px] text-[#9ca3af]"><Kbd>⌘S</Kbd> to save</span>
+        </div>
       </header>
       <div className="flex flex-1 overflow-hidden">
         <AnimatePresence initial={false}>
@@ -438,28 +531,95 @@ export default function RuleBuilder() {
                   </button>
                 </div>
                 <div className="flex-1 overflow-y-auto py-1">
-                  {allRules.length === 0 && (
+                  {visibleRules.length === 0 && (
                     <div className="flex flex-col items-center gap-2 text-[#9ca3af] text-xs text-center py-10 px-4">
                       <svg className="w-8 h-8 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                      No rules yet
+                      {filterGroupIds.length > 0 ? 'No rules match the selected groups' : 'No rules yet'}
                     </div>
                   )}
-                  {allRules.map(r => (
-                    <button key={r.id} onClick={() => handleSelect(r.id)}
-                      className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-left transition-all duration-150 border-l-2 ${
-                        selectedId === r.id
-                          ? 'bg-soc-blue/5 dark:bg-blue-500/10 text-soc-blue dark:text-blue-400 border-l-soc-blue dark:border-l-blue-400'
-                          : 'text-soc-stext dark:text-soc-darkstext hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] border-l-transparent'
-                      }`}>
-                      <span className={`w-2 h-2 rounded-full shrink-0 transition-colors ${r.enabled ? 'bg-green-500 shadow-sm shadow-green-500/30' : 'bg-[#d1d5db] dark:bg-[#4b5563]'}`} />
-                      <span className="flex-1 truncate font-medium">{r.name}</span>
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
-                        selectedId === r.id
-                          ? 'bg-soc-blue/10 dark:bg-blue-500/20 text-soc-blue dark:text-blue-400'
-                          : 'bg-[#f3f4f6] dark:bg-[#2d3140] text-[#9ca3af] dark:text-[#6b7280]'
-                      }`}>{r.enabled ? 'ON' : 'OFF'}</span>
-                    </button>
-                  ))}
+                  {visibleRules.map(r => {
+                    const ruleGroupIds = r.groupIds || []
+                    const isSelected = selectedRuleIds.includes(r.id)
+                    return (
+                      <div key={r.id}
+                        className={`group relative border-l-2 transition-all duration-150 ${
+                          selectedId === r.id
+                            ? 'bg-soc-blue/5 dark:bg-blue-500/10 border-l-soc-blue dark:border-l-blue-400'
+                            : 'border-l-transparent hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140]'
+                        }`}>
+                        <div className="flex items-start gap-1 px-2 py-1.5">
+                          <div className="flex items-center gap-1.5 min-w-0 flex-1" onClick={() => handleSelect(r.id)}>
+                            <span className={`w-2 h-2 rounded-full shrink-0 mt-0.5 transition-colors ${r.enabled ? 'bg-green-500 shadow-sm shadow-green-500/30' : 'bg-[#d1d5db] dark:bg-[#4b5563]'}`} />
+                            <span className="truncate font-medium text-xs text-soc-stext dark:text-soc-darkstext">{r.name}</span>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <label onClick={e => e.stopPropagation()} className="flex items-center">
+                              <input type="checkbox" checked={isSelected} onChange={() => toggleRuleSelection(r.id)}
+                                className="w-3.5 h-3.5 rounded border-[#d1d5db] dark:border-[#4b5563] text-[#3b82f6] focus:ring-[#3b82f6]/30 cursor-pointer" />
+                            </label>
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
+                              selectedId === r.id
+                                ? 'bg-soc-blue/10 dark:bg-blue-500/20 text-soc-blue dark:text-blue-400'
+                                : 'bg-[#f3f4f6] dark:bg-[#2d3140] text-[#9ca3af] dark:text-[#6b7280]'
+                            }`}>{r.enabled ? 'ON' : 'OFF'}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 px-2 pb-1.5 -mt-0.5 flex-wrap">
+                          {ruleGroupIds.slice(0, 2).map(gid => {
+                            const g = groupMap[gid]
+                            if (!g) return null
+                            return (
+                              <button key={gid} onClick={e => { e.stopPropagation(); handleSelect(r.id) }}
+                                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-medium text-white truncate max-w-[80px]"
+                                style={{ backgroundColor: g.color }}
+                                title={g.name}>
+                                {g.name}
+                                <span onClick={e => { e.stopPropagation(); quickAddToGroup(r.id, gid) }}
+                                  className="ml-0.5 hover:bg-white/20 rounded-full p-0.5 leading-none"
+                                  style={{ display: ruleGroupIds.length > 1 ? undefined : 'none' }}>
+                                  ×
+                                </span>
+                              </button>
+                            )
+                          })}
+                          {ruleGroupIds.length > 2 && (
+                            <span className="text-[8px] text-[#9ca3af] font-medium">+{ruleGroupIds.length - 2}</span>
+                          )}
+                          <div className="relative">
+                            <button onClick={e => { e.stopPropagation(); setAddToGroupRuleId(addToGroupRuleId === r.id ? null : r.id) }}
+                              className="p-0.5 rounded hover:bg-[#e5e7eb] dark:hover:bg-[#374151] text-[#9ca3af] opacity-0 group-hover:opacity-100 transition-all">
+                              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
+                            </button>
+                            {addToGroupRuleId === r.id && (
+                              <div className="absolute left-0 top-full mt-1 bg-white dark:bg-[#1a1d27] border border-[#e5e7eb] dark:border-[#2d3140] rounded-lg shadow-xl py-1 min-w-[140px] z-50">
+                                {allGroups.filter(g => !ruleGroupIds.includes(g.id)).length === 0 && (
+                                  <div className="px-3 py-2 text-[10px] text-[#9ca3af] italic">In all groups</div>
+                                )}
+                                {allGroups.filter(g => !ruleGroupIds.includes(g.id)).map(g => (
+                                  <button key={g.id} onClick={() => quickAddToGroup(r.id, g.id)}
+                                    className="w-full text-left px-3 py-1.5 text-[10px] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] text-soc-stext dark:text-soc-darkstext flex items-center gap-2">
+                                    <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
+                                    {g.name}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="px-3 py-2 border-t border-[#e5e7eb] dark:border-[#2d3140] flex items-center gap-2">
+                  <label className="flex items-center gap-1.5 text-[10px] text-[#9ca3af] cursor-pointer">
+                    <input type="checkbox" checked={visibleRules.length > 0 && visibleRules.every(r => selectedRuleIds.includes(r.id))}
+                      onChange={toggleSelectAll}
+                      className="w-3.5 h-3.5 rounded border-[#d1d5db] dark:border-[#4b5563] text-[#3b82f6] focus:ring-[#3b82f6]/30 cursor-pointer" />
+                    Select All
+                  </label>
+                  {selectedRuleIds.length > 0 && (
+                    <span className="text-[9px] text-[#3b82f6] font-medium">{selectedRuleIds.length} selected</span>
+                  )}
                 </div>
               </div>
             </motion.aside>
@@ -581,6 +741,48 @@ export default function RuleBuilder() {
                       </button>
                     </div>
                   ))}
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-[#16181f] rounded-xl border border-[#e5e7eb] dark:border-[#2d3140] shadow-sm overflow-hidden">
+                <div className="flex items-center justify-between px-3 sm:px-4 py-3 border-b border-[#e5e7eb] dark:border-[#2d3140]">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-3.5 h-3.5 text-[#9ca3af]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                    <span className="text-[11px] uppercase font-semibold text-[#9ca3af] tracking-wider">Groups</span>
+                  </div>
+                </div>
+                <div className="p-3 sm:p-4">
+                  {(() => {
+                    const groups = getAllGroups()
+                    const ruleGroupIds = editing.groupIds || []
+                    if (groups.length === 0) {
+                      return <div className="text-xs text-[#9ca3af] py-2 italic">No groups defined — manage groups in the Groups tab</div>
+                    }
+                    return (
+                      <div className="flex flex-wrap gap-1.5">
+                        {groups.map(g => {
+                          const active = ruleGroupIds.includes(g.id)
+                          return (
+                            <button key={g.id} onClick={() => {
+                              const updated = active
+                                ? ruleGroupIds.filter(id => id !== g.id)
+                                : [...ruleGroupIds, g.id]
+                              patch({ groupIds: updated })
+                            }}
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[10px] font-medium transition-all ${
+                                active
+                                  ? 'text-white shadow-sm'
+                                  : 'bg-[#f3f4f6] dark:bg-[#2d3140] text-[#6b7280] dark:text-[#9ca3af] hover:bg-[#e5e7eb] dark:hover:bg-[#374151]'
+                              }`}
+                              style={active ? { backgroundColor: g.color } : {}}>
+                              <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ backgroundColor: active ? 'white' : g.color }} />
+                              {g.name}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
 
@@ -754,6 +956,12 @@ export default function RuleBuilder() {
           )}
         </div>
       </div>
+      <GroupBulkActions
+        selectedRuleIds={selectedRuleIds}
+        visibleRuleIds={visibleRules.map(r => r.id)}
+        onSelectionChange={setSelectedRuleIds}
+        onRefresh={refresh}
+      />
     </div>
   )
 }

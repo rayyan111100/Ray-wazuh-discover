@@ -173,7 +173,7 @@ function DocViewer({ doc }) {
   )
 }
 
-function RuleBadge({ severity, name }) {
+function RuleBadge({ severity, name, groupNames, groupColors }) {
   const cls = ({
     critical: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 ring-1 ring-red-400/30',
     high: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 ring-1 ring-orange-400/30',
@@ -181,10 +181,21 @@ function RuleBadge({ severity, name }) {
     low: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 ring-1 ring-green-400/30',
     info: 'bg-gray-100 text-gray-600 dark:bg-gray-800/40 dark:text-gray-400 ring-1 ring-gray-400/20'
   })[severity] || ''
-  return <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap ${cls}`}><span className="shrink-0">{'\u2699'}</span><span className="truncate max-w-[120px]">{name}</span></span>
+  return (
+    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap ${cls}`}>
+      {groupColors?.slice(0, 2).map((c, i) => (
+        <span key={i} className="inline-block w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: c }} />
+      ))}
+      <span className="shrink-0">{'\u2699'}</span>
+      <span className="truncate max-w-[120px]">{name}</span>
+      {groupNames?.slice(0, 1).map((gn, i) => (
+        <span key={i} className="text-[8px] opacity-70 hidden sm:inline">({gn})</span>
+      ))}
+    </span>
+  )
 }
 
-export default function ResultsTable({ ruleMatches = null, results: propResults = null, total: propTotal = null, loading: propLoading = null, error: propError = null }) {
+export default function ResultsTable({ ruleMatches = null, groupMap = null, results: propResults = null, total: propTotal = null, loading: propLoading = null, error: propError = null }) {
   const { results: ctxResults, total: ctxTotal, columns, toggleColumn, moveColumn, doSort, sortField, sortOrder, loading: ctxLoading, error: ctxError, isDark, fields, loadFields } = useApp()
   const results = propResults ?? ctxResults
   const total = propTotal ?? ctxTotal
@@ -286,7 +297,7 @@ export default function ResultsTable({ ruleMatches = null, results: propResults 
                       if (c === 'Rule') {
                         return (
                           <td key="Rule" className="px-1.5 py-1">
-                            {match ? <RuleBadge severity={match.severity} name={match.ruleName} /> : <span className="text-soc-stext/40 dark:text-soc-darkstext/40">{'\u2014'}</span>}
+                            {match ? <RuleBadge severity={match.severity} name={match.ruleName} groupNames={match.groupNames} groupColors={match.groupColors} /> : <span className="text-soc-stext/40 dark:text-soc-darkstext/40">{'\u2014'}</span>}
                           </td>
                         )
                       }

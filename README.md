@@ -9,14 +9,26 @@ A professional Security Operations Center (SOC) dashboard built with React + Vit
 ## Features
 
 ### Tabs
-- **Discover** — Full OpenSearch-style log exploration with DQL search, filter bar, histogram, sortable results table, row expansion (Table/JSON views), field sidebar with stats, column toggle/reorder. Includes **Apply Rules** toggle to evaluate enabled rules against live results.
+- **Discover** — Full OpenSearch-style log exploration with DQL search, filter bar, histogram, sortable results table, row expansion (Table/JSON views), field sidebar with stats, column toggle/reorder. Includes **Apply Rules** toggle to evaluate enabled rules against live results with group-aware match badges & filter.
 - **Dashboard** — Full SOC security dashboard with summary cards (24h/7d/30d counts, alert rate), severity distribution bars, alert timeline area chart, top rules/agents, categories donut chart, recent alerts feed — all auto-refreshing every 60s
-- **Scan** — Security scan against IP/hostname/URL targets
-- **Analytics** — Top rules, top agents, severity distribution charts (recharts)
-- **Geo** — Geo-location cards by source IP
+- **Security Hub** — Centralized security findings overview
 - **Health** — Wazuh cluster health, indices list, index stats
-- **Indices** — Index management overview
-- **Rules** — Rule Engine for creating and testing custom Wazuh-style rules
+- **Rules** — Rule Engine for creating and testing custom Wazuh-style rules. Multi-select, group chips with color dots, quick-add-to-group, sort (name/date/status/group), group filter sidebar.
+- **Groups** — Group CRUD management with name, description, color picker, and rule assignment checkboxes
+- **Group Rules** — Full-page group rules manager with Recharts pie chart, drag-and-drop rule assignment, JSON export/import, merge dialog
+- **RuleView** — Browse rules in a readable card layout
+- **Decoder** — Decoder management (Wazuh decoders)
+
+### Rule Groups
+- **Group CRUD** — create/edit/delete groups with name, description, and 12 preset colors
+- **Many-to-Many** — rules can belong to multiple groups via `groupIds: []`
+- **Group Sidebar** — collapsible filter sidebar with search, drag-and-drop reorder, context menu (edit/delete/selectAll/deselectAll)
+- **Bulk Actions** — floating toolbar for bulk add/move/remove/delete/enable/disable with progress bar & keyboard shortcuts (Ctrl+A, Escape, Delete)
+- **Group Rules Manager** — full-page two-panel layout with Recharts pie chart, drag-and-drop rule assignment, JSON export/import, merge dialog (move/copy)
+- **Discover Integration** — color-coded group badges on matched rules, group filter dropdown in stats bar, per-group match breakdown chips
+- **ResultsTable** — RuleBadge shows up to 2 group color dots + group name parenthetical
+- **Toast Notifications** — animated undo-supported toasts for all group operations (add/move/remove/delete/enable/disable)
+- **Persistence** — automatic migration of existing rules (adds `groupIds: []`), backup/restore, conflict resolution, orphan cleanup
 
 ### Rule Engine
 - **Create rules** with multiple conditions (AND/OR logic), field selectors with autocomplete (50+ Wazuh fields), operators (equals/contains/regex/startsWith/endsWith/gt/lt/inList/exists), and NOT negation
@@ -56,13 +68,17 @@ A professional Security Operations Center (SOC) dashboard built with React + Vit
 
 ## Screenshots
 
-| Discover Tab | Dashboard Tab (SOC) |
+| Rule Groups (Management) | Group Rules (Full Page) |
 |:---:|:---:|
-| ![Discover](output/Screenshot%202026-05-25%20224822.png) | ![SOC Dashboard](output/Screenshot%202026-05-25%20225706.png) |
+| ![Rule Groups](output/rulegroups-tab.png) | ![Group Rules](output/grouprules-tab.png) |
 
-| Doc Viewer | Dashboard Tab (previous) |
+| Rules (Group Chips & Filters) | Discover (Group-Aware Badges) |
 |:---:|:---:|
-| ![DocViewer](output/Screenshot%202026-05-25%20171900.png) | ![Dashboard old](output/Screenshot%202026-05-25%20142122.png) |
+| ![Rules Tab](output/rules-tab.png) | ![Discover Tab](output/discover-tab.png) |
+
+| Rules with Group Sidebar | Security Hub |
+|:---:|:---:|
+| ![Group Sidebar](output/group-sidebar.png) | ![Security Hub](output/security-hub.png) |
 
 ---
 
@@ -122,33 +138,38 @@ src/
   main.jsx            — Entry point
   index.css           — Tailwind + custom component classes
   context/
-    AppContext.jsx     — Global state (search, filters, columns, refresh, theme)
+    AppContext.jsx     — Global state (search, filters, columns, refresh, theme, groups)
+    ToastContext.jsx   — Toast notification system with undo support
   components/
     Navbar.jsx        — Top bar with theme toggle + clock
-    Sidebar.jsx       — Collapsible nav with 7 tabs
+    Sidebar.jsx       — Collapsible nav with 10 tabs
     QueryBar.jsx      — DQL input, quick dates, filter bar, refresh interval
     DateRangePicker.jsx
     RefreshInterval.jsx — EUI-style auto-refresh controls
     Histogram.jsx     — Time-series bar chart
-    ResultsTable.jsx  — Sortable, filterable results with row expansion
+    ResultsTable.jsx  — Sortable, filterable results with row expansion & rule badges
     DocViewer.jsx     — Table/JSON views with field tokens + action buttons
     FieldSidebar.jsx  — Field list with stats popover
-    DashboardStats.jsx  (replaced by SocDashboard)
-    SocDashboard.jsx    — Full SOC dashboard: 7 widgets with live Wazuh data
-    RuleBuilder.jsx  — Full rule editor: conditions, actions, ignore IPs, test panel
-    ResultsTable.jsx — Sortable, filterable results with rule match badges & overrides
+    SocDashboard.jsx  — Full SOC dashboard: 7 widgets with live Wazuh data
+    RuleBuilder.jsx   — Full rule editor + multi-select, group chips, sort, filter
+    GroupSidebar.jsx  — Collapsible group filter sidebar with DnD reorder & context menu
+    GroupBulkActions.jsx — Floating toolbar for bulk group operations with progress
   services/
-    ruleStorage.js   — localStorage CRUD for rules & groups
-    ruleEngine.js    — Rule evaluation engine: conditions, CIDR match, message interpolation
+    ruleStorage.js    — localStorage CRUD for rules & groups
+    ruleEngine.js     — Rule evaluation engine: conditions, CIDR match, message interpolation
+    ruleGroupManager.js — High-level group business logic (add/move/remove/stats)
+    rulePersistence.js  — Migration, backup/restore, conflict resolution
+    undoManager.js    — Undo history with 5-second window & subscribe pattern
   tabs/
-    DiscoverTab.jsx
+    DiscoverTab.jsx   — Group-aware match badges, filter dropdown, breakdown chips
     DashboardTab.jsx
-    ScanTab.jsx
-    AnalyticsTab.jsx
-    GeoTab.jsx
+    SecurityHubTab.jsx
     HealthTab.jsx
-    IndicesTab.jsx
-    RulesTab.jsx
+    RulesTab.jsx      — Group filter pass-through
+    RuleGroupsTab.jsx — Group CRUD with color picker & rule assignment
+    GroupRulesTab.jsx — Full page: pie chart, drag-drop, export/import, merge
+    RuleViewTab.jsx
+    DecoderTab.jsx
 server/
   server.cjs          — Express proxy + static file serving
 ```
@@ -182,6 +203,15 @@ server/
 | Added | Extract Fields button — parses pasted JSON and lists all available field paths |
 | Added | Missing field warning — highlights wrong interpolation paths in test results |
 | Fixed | `conditionsToQuery` — now respects `negate` flag and `gte`/`lte` operators |
+| Added | **Rule Groups** — group CRUD (name/description/color), many-to-many association with rules |
+| Added | GroupSidebar — collapsible filter sidebar with drag-and-drop reorder, search, context menu |
+| Added | GroupBulkActions — floating toolbar for add/move/remove/delete/enable/disable with progress bar & keyboard shortcuts |
+| Added | GroupRulesTab — full-page group rules manager with pie chart, drag-and-drop assignment, export/import JSON, merge dialog |
+| Added | DiscoverTab integration — group-aware rule match badges, group filter dropdown, per-group match breakdown chips |
+| Added | ResultsTable — group color dots + name in RuleBadge, filtered rule matches pass-through |
+| Added | ToastContext — animated toast notifications with undo support (5s auto-dismiss) |
+| Added | undoManager — 5-second undo window with subscribe/notify pattern |
+| Added | rulePersistence — migration (groupIds: [] auto-fill), backup/restore, conflict resolution, storage info |
 
 ---
 
