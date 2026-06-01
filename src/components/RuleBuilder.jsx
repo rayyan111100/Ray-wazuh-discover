@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getAllRules, createRule, updateRule, deleteRule, toggleRuleEnabled, getAllGroups, saveRuleWithVersion, updateRuleWithVersion } from '../services/ruleStorage'
+import { getAllRules, createRule, updateRule, deleteRule, toggleRuleEnabled, getAllGroups } from '../services/ruleStorage'
+import { saveRuleWithVersion } from '../services/ruleVersionStorage'
 import { addRulesToGroup } from '../services/ruleGroupManager'
 import GroupBulkActions from './GroupBulkActions'
 import VersionHistoryPanel from './VersionHistoryPanel'

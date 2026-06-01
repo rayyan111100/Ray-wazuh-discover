@@ -98,16 +98,23 @@ function evalItem(item, doc) {
   return { condition: { ...item, missing: ev.missing }, matched: ev.matched, actual: ev.actual, reason: ev.reason }
 }
 
-function evalConditionGroup(group, doc, logic) {
+function evalConditionGroup(group, doc) {
   const items = group.conditions || group.items || []
-  if (!items.length) return { matched: true, details: [], actions: [] }
+  if (!items.length) {
+    return { condition: { ...group }, matched: true, details: [], reason: 'Empty group matches by default' }
+  }
   const results = items.map(c => evalItem(c, doc))
   const matched = results.reduce((acc, r, idx) => {
     if (idx === 0) return r.matched
-    const l = r.condition?.logic || logic || 'AND'
+    const l = r.condition?.logic || group.logic || 'AND'
     return l === 'OR' ? acc || r.matched : acc && r.matched
   }, false)
-  return { matched, details: results }
+  return {
+    condition: { ...group },
+    matched,
+    details: results,
+    reason: `${results.filter(r => r.matched).length}/${results.length} group conditions matched`
+  }
 }
 
 export function evalRule(rule, doc) {

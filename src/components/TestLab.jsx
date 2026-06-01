@@ -1,20 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { getAllRules } from '../services/ruleStorage'
+import { evalRule } from '../services/ruleEngine'
+import { addTestResult, clearTestResults, deleteTestResult, getTestResults } from '../services/testResultStorage'
 import { useToast } from '../context/ToastContext'
-
-const TEST_RESULTS_KEY = 'soc_test_results'
-
-function loadTestResults() {
-  try {
-    const raw = localStorage.getItem(TEST_RESULTS_KEY)
-    return raw ? JSON.parse(raw) : []
-  } catch { return [] }
-}
-
-function saveTestResults(results) {
-  localStorage.setItem(TEST_RESULTS_KEY, JSON.stringify(results))
-}
 
 const DEFAULT_EVENT = JSON.stringify({
   '@timestamp': new Date().toISOString(),
@@ -23,79 +12,34 @@ const DEFAULT_EVENT = JSON.stringify({
   full_log: 'Test log entry'
 }, null, 2)
 
-function flattenConditions(items) {
+
+function flattenDetails(items) {
   const result = []
-  for (const item of items) {
-    if (item.type === 'group') result.push(...flattenConditions(item.conditions || item.items || []))
+  for (const item of items || []) {
+    if (item.details) result.push(...flattenDetails(item.details))
     else result.push(item)
   }
   return result
 }
 
-function evalRule(rule, doc) {
-  const { conditions, conditionLogic, actions } = rule
-  if (!conditions || conditions.length === 0) return { matched: true, details: [], actions: actions || [] }
-  const results = conditions.map(c => evalItem(c, doc))
-  const matched = results.reduce((acc, r, idx) => {
-    if (idx === 0) return r.matched
-    const l = r.condition?.logic || conditionLogic || 'AND'
-    return l === 'OR' ? acc || r.matched : acc && r.matched
-  }, false)
-  return { matched, details: results, actions: matched ? (actions || []) : [] }
-}
-
-function evalItem(item, doc) {
-  if (item.type === 'group') return evalConditionGroup(item, doc)
-  const fieldVal = resolveField(doc, item.field)
-  const exists = fieldVal !== null && fieldVal !== undefined && fieldVal !== ''
-  if (!exists && item.operator !== 'exists') return { condition: { ...item, missing: true }, matched: false, actual: fieldVal, reason: 'Field missing' }
-  const result = evalOperator(fieldVal, item.operator, item.value)
-  const matched = item.negate ? !result.matched : result.matched
-  return { condition: { ...item, missing: false }, matched, actual: fieldVal, reason: result.reason }
-}
-
-function evalConditionGroup(group, doc) {
-  const items = group.conditions || group.items || []
-  if (!items.length) return { matched: true, details: [] }
-  const results = items.map(c => evalItem(c, doc))
-  const matched = results.reduce((acc, r, idx) => {
-    if (idx === 0) return r.matched; const l = r.condition?.logic || group.logic || 'AND'
-    return l === 'OR' ? acc || r.matched : acc && r.matched
-  }, false)
-  return { matched, details: results }
-}
-
-function evalOperator(fieldVal, operator, condVal) {
-  const exists = fieldVal !== null && fieldVal !== undefined && fieldVal !== ''
-  const valueToText = v => { if (Array.isArray(v)) return v.join(', '); if (v && typeof v === 'object') return JSON.stringify(v); return String(v ?? '') }
-  const valueParts = v => Array.isArray(v) ? v.map(x => String(x)) : [valueToText(v)]
-  const fv = valueToText(fieldVal); const parts = valueParts(fieldVal); const cv = String(condVal ?? '')
-  if (!exists && operator !== 'exists') return { matched: false, reason: 'Field missing in alert' }
-  if (operator !== 'exists' && operator !== 'regex' && cv === '') return { matched: false, reason: 'Condition value is empty' }
-  switch (operator) {
-    case 'equals': return { matched: parts.some(v => String(v) === cv), reason: `Actual: ${fv}` }
-    case 'contains': return { matched: parts.some(v => String(v).toLowerCase().includes(cv.toLowerCase())), reason: `Actual: ${fv}` }
-    case 'regex': try { const re = new RegExp(cv, 'i'); return { matched: parts.some(v => re.test(String(v))), reason: `Actual: ${fv}` } } catch (err) { return { matched: false, reason: `Invalid regex: ${err.message}` } }
-    case 'startsWith': return { matched: parts.some(v => String(v).toLowerCase().startsWith(cv.toLowerCase())), reason: `Actual: ${fv}` }
-    case 'endsWith': return { matched: parts.some(v => String(v).toLowerCase().endsWith(cv.toLowerCase())), reason: `Actual: ${fv}` }
-    case 'gt': case 'gte': case 'lt': case 'lte': {
-      const actual = Number(fv); const expected = Number(cv)
-      if (Number.isNaN(actual)) return { matched: false, reason: `Not a number: ${fv}` }
-      if (Number.isNaN(expected)) return { matched: false, reason: `Not a number: ${cv}` }
-      const m = operator === 'gt' ? actual > expected : operator === 'gte' ? actual >= expected : operator === 'lt' ? actual < expected : actual <= expected
-      return { matched: m, reason: `Actual: ${actual}` }
-    }
-    case 'inList': { const list = cv.split(',').map(s => s.trim()).filter(Boolean); return { matched: parts.some(v => list.includes(String(v))), reason: `Actual: ${fv}` } }
-    case 'exists': return { matched: exists, reason: exists ? `Actual: ${fv}` : 'Field missing' }
-    default: return { matched: false, reason: `Unknown operator: ${operator}` }
-  }
-}
-
-function resolveField(doc, path) {
-  if (!path) return undefined
-  const parts = path.split('.'); let cur = doc
-  for (const p of parts) { if (cur === null || cur === undefined || typeof cur !== 'object') return undefined; cur = cur[p] }
-  return cur
+function DetailList({ details }) {
+  const flat = flattenDetails(details)
+  if (!flat.length) return null
+  return (
+    <div className="mt-2 flex flex-wrap gap-1">
+      {flat.map((d, idx) => (
+        <span key={idx} className={`text-[9px] px-1.5 py-0.5 rounded-full ${
+          d.matched
+            ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+            : d.condition?.missing
+              ? 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+              : 'bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+        }`}>
+          {d.condition?.field || 'group'} {d.condition?.operator || ''} {d.condition?.value ? `"${d.condition.value}"` : ''} - {d.reason || (d.matched ? 'matched' : 'not matched')}
+        </span>
+      ))}
+    </div>
+  )
 }
 
 export default function TestLab() {
@@ -108,7 +52,7 @@ export default function TestLab() {
   const [savedName, setSavedName] = useState('')
   const toast = useToast()
 
-  const refresh = useCallback(() => { setRules(getAllRules()); setHistory(loadTestResults()) }, [])
+  const refresh = useCallback(() => { setRules(getAllRules()); setHistory(getTestResults()) }, [])
 
   useEffect(() => { refresh() }, [refresh])
 
@@ -129,7 +73,8 @@ export default function TestLab() {
     const testRules = rules.filter(r => ids.includes(r.id))
     const output = testRules.map(r => {
       const { matched, details } = evalRule(r, doc)
-      return { id: r.id, name: r.name, matched, detailCount: details.length, matchCount: details.filter(d => d.matched).length, enabled: r.enabled }
+      const flatDetails = flattenDetails(details)
+      return { id: r.id, name: r.name, matched, detailCount: flatDetails.length, matchCount: flatDetails.filter(d => d.matched).length, enabled: r.enabled, details }
     })
     const matchedCount = output.filter(r => r.matched).length
     const entry = {
@@ -141,8 +86,7 @@ export default function TestLab() {
       results: output,
       name: savedName || `Test run ${history.length + 1}`
     }
-    const updated = [entry, ...history].slice(0, 50)
-    saveTestResults(updated)
+    const updated = addTestResult(entry)
     setHistory(updated)
     setResults(output)
     setActiveView('results')
@@ -151,8 +95,7 @@ export default function TestLab() {
   }
 
   function clearHistory() {
-    saveTestResults([])
-    setHistory([])
+    setHistory(clearTestResults())
     setResults(null)
     toast.success('Test history cleared')
   }
@@ -164,9 +107,7 @@ export default function TestLab() {
   }
 
   function deleteHistoryEntry(id) {
-    const updated = history.filter(h => h.id !== id)
-    saveTestResults(updated)
-    setHistory(updated)
+    setHistory(deleteTestResult(id))
   }
 
   const selectedCount = selectedRuleIds.length
@@ -261,20 +202,23 @@ export default function TestLab() {
                 </div>
                 <div className="divide-y divide-[#e5e7eb] dark:divide-[#2d3140] max-h-96 overflow-y-auto">
                   {results.map(r => (
-                    <div key={r.id} className={`flex items-center gap-3 px-3 sm:px-4 py-2.5 text-xs ${r.matched ? 'bg-green-50/50 dark:bg-green-900/8' : ''}`}>
-                      <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${r.matched ? 'bg-green-500 shadow-sm shadow-green-500/30' : 'bg-[#d1d5db] dark:bg-[#4b5563]'}`} />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-soc-stext dark:text-soc-darkstext truncate">{r.name}</span>
-                          {!r.enabled && <span className="text-[8px] px-1 py-0.5 rounded-full bg-[#f3f4f6] dark:bg-[#2d3140] text-[#9ca3af]">DISABLED</span>}
+                    <div key={r.id} className={`px-3 sm:px-4 py-2.5 text-xs ${r.matched ? 'bg-green-50/50 dark:bg-green-900/8' : ''}`}>
+                      <div className="flex items-center gap-3">
+                        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${r.matched ? 'bg-green-500 shadow-sm shadow-green-500/30' : 'bg-[#d1d5db] dark:bg-[#4b5563]'}`} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-soc-stext dark:text-soc-darkstext truncate">{r.name}</span>
+                            {!r.enabled && <span className="text-[8px] px-1 py-0.5 rounded-full bg-[#f3f4f6] dark:bg-[#2d3140] text-[#9ca3af]">DISABLED</span>}
+                          </div>
+                          <div className="text-[9px] text-[#9ca3af] mt-0.5">{r.matchCount}/{r.detailCount} conditions matched</div>
                         </div>
-                        <div className="text-[9px] text-[#9ca3af] mt-0.5">{r.matchCount}/{r.detailCount} conditions matched</div>
+                        {r.matched ? (
+                          <span className="px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-[9px] font-medium">MATCH</span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full bg-[#f3f4f6] dark:bg-[#2d3140] text-[#9ca3af] text-[9px] font-medium">NO MATCH</span>
+                        )}
                       </div>
-                      {r.matched ? (
-                        <span className="px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-[9px] font-medium">MATCH</span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-full bg-[#f3f4f6] dark:bg-[#2d3140] text-[#9ca3af] text-[9px] font-medium">NO MATCH</span>
-                      )}
+                      <DetailList details={r.details} />
                     </div>
                   ))}
                 </div>

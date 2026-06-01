@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { diffLines } from 'diff'
-import { getVersionHistory, rollbackToVersion, exportVersionAsRule, getVersion } from '../services/ruleStorage'
+import { getVersionHistory, rollbackToVersion, exportVersionAsRule, getVersion } from '../services/ruleVersionStorage'
 import { useToast } from '../context/ToastContext'
 
 function renderDiff(oldText, newText) {
