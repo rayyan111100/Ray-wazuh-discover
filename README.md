@@ -2,8 +2,6 @@
 
 A professional Security Operations Center (SOC) dashboard built with React + Vite + Tailwind CSS, connecting to Wazuh API for security event monitoring and analysis.
 
-![Dashboard](output/Screenshot%202026-05-25%20224822.png)
-
 ---
 
 ## Features
@@ -13,11 +11,23 @@ A professional Security Operations Center (SOC) dashboard built with React + Vit
 - **Dashboard** — Full SOC security dashboard with summary cards (24h/7d/30d counts, alert rate), severity distribution bars, alert timeline area chart, top rules/agents, categories donut chart, recent alerts feed — all auto-refreshing every 60s
 - **Security Hub** — Centralized security findings overview
 - **Health** — Wazuh cluster health, indices list, index stats
-- **Rules** — Rule Engine for creating and testing custom Wazuh-style rules. Multi-select, group chips with color dots, quick-add-to-group, sort (name/date/status/group), group filter sidebar.
+- **Rules** — Rule Engine with **Editor** and **Test Lab** sub-tabs. Create rules with nested condition groups, version history, bulk operations.
 - **Groups** — Group CRUD management with name, description, color picker, and rule assignment checkboxes
 - **Group Rules** — Full-page group rules manager with Recharts pie chart, drag-and-drop rule assignment, JSON export/import, merge dialog
 - **RuleView** — Browse rules in a readable card layout
 - **Decoder** — Decoder management (Wazuh decoders)
+
+### Rule Engine
+- **Nested Condition Groups** — AND/OR groups with up to 3 levels of nesting, drag-and-drop reorder, flat/nested view toggle, max-depth warning
+- **Version Control** — Automatic versioned saves (last 10), visual diff (green/red), rollback, compare any two versions, export version as new rule, save comments
+- **Bulk Operations** — Find & Replace across nested conditions, bulk tagging, bulk export (JSON/Sigma/clipboard), bulk clone, bulk test, keyboard shortcut guide
+- **Test Lab** — Dedicated testing environment with rule selection, JSON event editor, per-rule match/no-match results, persistent test history (last 50 runs)
+- **Conditions**: field selectors with autocomplete (50+ Wazuh fields), operators (equals/contains/regex/startsWith/endsWith/gt/lt/inList/exists), NOT negation
+- **Actions**: alert (severity + custom level 0-15 + interpolated message), tag, ignore
+- **Overwrite mode** — when enabled, rule overrides `rule.level` and `rule.description` in Discover tab
+- **Ignore IPs** — CIDR-based IP exclusion per rule
+- **Apply Rules in Discover** — Toggle in Discover tab to see rule-matched alerts with severity-colored badges, overridden level/description, row highlighting
+- **Import/Export** — JSON-based rule sharing between instances
 
 ### Rule Groups
 - **Group CRUD** — create/edit/delete groups with name, description, and 12 preset colors
@@ -29,22 +39,6 @@ A professional Security Operations Center (SOC) dashboard built with React + Vit
 - **ResultsTable** — RuleBadge shows up to 2 group color dots + group name parenthetical
 - **Toast Notifications** — animated undo-supported toasts for all group operations (add/move/remove/delete/enable/disable)
 - **Persistence** — automatic migration of existing rules (adds `groupIds: []`), backup/restore, conflict resolution, orphan cleanup
-
-### Rule Engine
-- **Create rules** with multiple conditions (AND/OR logic), field selectors with autocomplete (50+ Wazuh fields), operators (equals/contains/regex/startsWith/endsWith/gt/lt/inList/exists), and NOT negation
-- **Actions**: alert (severity + custom level 0-15 + interpolated message), tag, ignore
-- **Overwrite mode** — when enabled, rule overrides `rule.level` and `rule.description` in Discover tab
-- **Ignore IPs** — CIDR-based IP exclusion per rule
-- **Test panel** — Run Test against live data with per-condition match/fail indicators
-- **Batch Test All Rules** — Test all enabled rules against latest 50 alerts with match percentage
-- **Apply Rules in Discover** — Toggle ⚙ Rules in Discover tab to see rule-matched alerts with:
-  - Severity-colored Rule column with rule name badge
-  - Overridden `rule.level` (new badge + original strikethrough)
-  - Overridden `rule.description`
-  - Row highlighting by severity (red/orange/yellow/green)
-  - Purple stats bar with per-rule match counts
-- **Import/Export** — JSON-based rule sharing between instances
-- **Dashboard** — Stats overview (total/enabled/disabled rules, by group, by priority, overwrite count)
 
 ### UI/UX
 - **Inter font** with professional color palette (`#3b82f6` accent blue)
@@ -68,17 +62,17 @@ A professional Security Operations Center (SOC) dashboard built with React + Vit
 
 ## Screenshots
 
-| Rule Groups (Management) | Group Rules (Full Page) |
+| Nested Condition Groups | Rules Overview |
 |:---:|:---:|
-| ![Rule Groups](output/rulegroups-tab.png) | ![Group Rules](output/grouprules-tab.png) |
+| ![Nested Condition Groups](output/rules-editor-nested.png) | ![Rules Overview](output/rules-overview.png) |
 
-| Rules (Group Chips & Filters) | Discover (Group-Aware Badges) |
+| Version History | Bulk Operations |
 |:---:|:---:|
-| ![Rules Tab](output/rules-tab.png) | ![Discover Tab](output/discover-tab.png) |
+| ![Version History](output/version-history.png) | ![Bulk Operations](output/bulk-operations.png) |
 
-| Rules with Group Sidebar | Security Hub |
+| Test Lab — Run | Test Lab — History |
 |:---:|:---:|
-| ![Group Sidebar](output/group-sidebar.png) | ![Security Hub](output/security-hub.png) |
+| ![Test Lab Run](output/testlab-run.png) | ![Test Lab History](output/testlab-history.png) |
 
 ---
 
@@ -151,12 +145,15 @@ src/
     DocViewer.jsx     — Table/JSON views with field tokens + action buttons
     FieldSidebar.jsx  — Field list with stats popover
     SocDashboard.jsx  — Full SOC dashboard: 7 widgets with live Wazuh data
-    RuleBuilder.jsx   — Full rule editor + multi-select, group chips, sort, filter
+    RuleBuilder.jsx   — Full rule editor with nested condition groups, version history sidebar
     GroupSidebar.jsx  — Collapsible group filter sidebar with DnD reorder & context menu
-    GroupBulkActions.jsx — Floating toolbar for bulk group operations with progress
+    GroupBulkActions.jsx — Floating toolbar with Find & Replace, Bulk Tag, Bulk Export, Bulk Clone, Bulk Test
+    ConditionGroupEditor.jsx — Recursive nested group editor with drag-and-drop, flat/nested toggle
+    VersionHistoryPanel.jsx — Version list, diff, rollback, compare, export
+    TestLab.jsx       — Dedicated test environment with history persistence
   services/
-    ruleStorage.js    — localStorage CRUD for rules & groups
-    ruleEngine.js     — Rule evaluation engine: conditions, CIDR match, message interpolation
+    ruleStorage.js    — localStorage CRUD with versioned saves, tags support
+    ruleEngine.js     — Recursive rule evaluation engine: nested groups, CIDR match, interpolation
     ruleGroupManager.js — High-level group business logic (add/move/remove/stats)
     rulePersistence.js  — Migration, backup/restore, conflict resolution
     undoManager.js    — Undo history with 5-second window & subscribe pattern
@@ -165,7 +162,7 @@ src/
     DashboardTab.jsx
     SecurityHubTab.jsx
     HealthTab.jsx
-    RulesTab.jsx      — Group filter pass-through
+    RulesTab.jsx      — Sub-tab navigation (Editor / Test Lab)
     RuleGroupsTab.jsx — Group CRUD with color picker & rule assignment
     GroupRulesTab.jsx — Full page: pie chart, drag-drop, export/import, merge
     RuleViewTab.jsx
@@ -191,27 +188,23 @@ server/
 | Improved | Scrollbar styling, badge colors, card shadows |
 | Fixed | Server timeouts increased to 120s for large datasets |
 | Fixed | Circular dependency in dynamic import — switched to static import |
-| Added | SOC Dashboard with 7 live widgets (summary cards, severity bars, timeline area, top rules, categories donut, top agents, recent alerts) via `/api/dashboard` endpoint |
+| Added | SOC Dashboard with 7 live widgets via `/api/dashboard` endpoint |
 | Added | Auto-refresh every 60s on Dashboard tab |
 | Added | Rule Engine — RuleBuilder with conditions, actions, overwrite mode, ignore IPs, import/export, dashboard stats, test panel, batch testing |
 | Added | Apply Rules in Discover tab — client-side rule evaluation, severity-colored Rule column, overridden level/description, row highlighting, stats bar |
 | Added | Custom level override (0-15) in rule action params |
 | Added | Expanded field selector with 50+ Wazuh fields + free-text input with datalist autocomplete |
-| Added | Wazuh API JWT authentication — auto token acquisition via WAZUH_USER/WAZUH_PASSWORD in .env |
-| Fixed | Rule engine — added missing `gte`/`lte` operators |
-| Fixed | Batch test — fallback chain: API → pasted JSON → mock data when API unavailable |
+| Added | Wazuh API JWT authentication — auto token acquisition via WAZUH_USER/WAZUH_PASSWORD |
 | Added | Extract Fields button — parses pasted JSON and lists all available field paths |
-| Added | Missing field warning — highlights wrong interpolation paths in test results |
-| Fixed | `conditionsToQuery` — now respects `negate` flag and `gte`/`lte` operators |
-| Added | **Rule Groups** — group CRUD (name/description/color), many-to-many association with rules |
-| Added | GroupSidebar — collapsible filter sidebar with drag-and-drop reorder, search, context menu |
-| Added | GroupBulkActions — floating toolbar for add/move/remove/delete/enable/disable with progress bar & keyboard shortcuts |
-| Added | GroupRulesTab — full-page group rules manager with pie chart, drag-and-drop assignment, export/import JSON, merge dialog |
-| Added | DiscoverTab integration — group-aware rule match badges, group filter dropdown, per-group match breakdown chips |
-| Added | ResultsTable — group color dots + name in RuleBadge, filtered rule matches pass-through |
+| Added | **Rule Groups** — group CRUD, GroupSidebar, GroupBulkActions, GroupRulesTab, Discover integration |
 | Added | ToastContext — animated toast notifications with undo support (5s auto-dismiss) |
 | Added | undoManager — 5-second undo window with subscribe/notify pattern |
-| Added | rulePersistence — migration (groupIds: [] auto-fill), backup/restore, conflict resolution, storage info |
+| Added | rulePersistence — migration, backup/restore, conflict resolution, storage info |
+| Added | **Nested Condition Groups** — AND/OR groups with up to 3 levels nesting, drag-and-drop, flat/nested view toggle, recursive evaluation |
+| Added | **Version Control** — versioned saves (last 10), visual diff (diff library), rollback, compare, export as new rule, save comments |
+| Added | **Bulk Operations** — Find & Replace, Bulk Tag, Bulk Export (JSON/Sigma/clipboard), Bulk Clone, Bulk Test, keyboard shortcut guide |
+| Added | **Test Lab** — rule selection, JSON event editor, per-rule match/no-match results, persistent history in localStorage |
+| Added | **Rules sub-tabs** — Editor / Test Lab navigation with animated transitions |
 
 ---
 

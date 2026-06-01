@@ -1,5 +1,7 @@
 export const STORAGE_KEY = 'soc_rules'
 export const GROUPS_KEY = 'soc_rule_groups'
+export const VERSIONS_KEY = 'soc_rule_versions'
+const MAX_VERSIONS = 10
 
 function load() {
   try {
@@ -100,6 +102,7 @@ export function createRule(defaults = {}) {
     actions: [{ type: 'alert', params: { severity: 'high', message: '' } }],
     conditions: [],
     groupIds: defaults.groupIds || [],
+    tags: defaults.tags || [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   }
@@ -129,4 +132,125 @@ export function toggleRuleEnabled(id) {
   r.updatedAt = new Date().toISOString()
   save(rules)
   return r
+}
+
+// ─── Version Control ─────────────────────────────────────────
+
+function loadVersions() {
+  try {
+    const raw = localStorage.getItem(VERSIONS_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch { return {} }
+}
+
+function saveVersions(map) {
+  localStorage.setItem(VERSIONS_KEY, JSON.stringify(map))
+}
+
+export function getVersionHistory(ruleId) {
+  const map = loadVersions()
+  return (map[ruleId] || []).slice().reverse()
+}
+
+export function saveRuleWithVersion(rule, comment = '') {
+  const rules = load()
+  const idx = rules.findIndex(r => r.id === rule.id)
+  if (idx === -1) return null
+  const old = { ...rules[idx] }
+  const updated = { ...rule, updatedAt: new Date().toISOString() }
+  rules[idx] = updated
+  save(rules)
+
+  const map = loadVersions()
+  const list = map[rule.id] || []
+  const vNum = list.length + 1
+  list.push({
+    id: 'v_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+    ruleId: rule.id,
+    snapshot: JSON.parse(JSON.stringify(old)),
+    comment,
+    timestamp: new Date().toISOString(),
+    versionNumber: vNum
+  })
+  if (list.length > MAX_VERSIONS) list.splice(0, list.length - MAX_VERSIONS)
+  map[rule.id] = list
+  saveVersions(map)
+  return updated
+}
+
+export function rollbackToVersion(ruleId, versionIndex, comment = 'Rollback') {
+  const map = loadVersions()
+  const list = map[ruleId]
+  if (!list || versionIndex < 0 || versionIndex >= list.length) return null
+  const version = list[versionIndex]
+  const snapshot = JSON.parse(JSON.stringify(version.snapshot))
+  const rules = load()
+  const idx = rules.findIndex(r => r.id === ruleId)
+  if (idx === -1) return null
+  const old = { ...rules[idx] }
+  const restored = { ...snapshot, updatedAt: new Date().toISOString() }
+  rules[idx] = restored
+  save(rules)
+
+  const vNum = list.length + 1
+  list.push({
+    id: 'v_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+    ruleId,
+    snapshot: JSON.parse(JSON.stringify(old)),
+    comment,
+    timestamp: new Date().toISOString(),
+    versionNumber: vNum
+  })
+  if (list.length > MAX_VERSIONS) list.splice(0, list.length - MAX_VERSIONS)
+  map[ruleId] = list
+  saveVersions(map)
+  return restored
+}
+
+export function exportVersionAsRule(ruleId, versionIndex) {
+  const map = loadVersions()
+  const list = map[ruleId]
+  if (!list || versionIndex < 0 || versionIndex >= list.length) return null
+  const snapshot = JSON.parse(JSON.stringify(list[versionIndex].snapshot))
+  snapshot.id = createId()
+  snapshot.name = snapshot.name + ' (v' + list[versionIndex].versionNumber + ')'
+  snapshot.createdAt = new Date().toISOString()
+  snapshot.updatedAt = new Date().toISOString()
+  const rules = load()
+  rules.push(snapshot)
+  save(rules)
+  return snapshot
+}
+
+export function getVersion(ruleId, versionIndex) {
+  const map = loadVersions()
+  const list = map[ruleId]
+  if (!list || versionIndex < 0 || versionIndex >= list.length) return null
+  return list[versionIndex]
+}
+
+export function updateRuleWithVersion(id, patch, comment = '') {
+  const rules = load()
+  const r = rules.find(x => x.id === id)
+  if (!r) return null
+  const old = { ...r }
+  const updated = { ...r, ...patch, updatedAt: new Date().toISOString() }
+  Object.assign(r, patch, { updatedAt: new Date().toISOString() })
+  save(rules)
+
+  const map = loadVersions()
+  const list = map[id] || []
+  const vNum = list.length + 1
+  list.push({
+    id: 'v_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+    ruleId: id,
+    snapshot: JSON.parse(JSON.stringify(old)),
+    comment,
+    timestamp: new Date().toISOString(),
+    versionNumber: vNum
+  })
+  if (list.length > MAX_VERSIONS) list.splice(0, list.length - MAX_VERSIONS)
+  map[id] = list
+  saveVersions(map)
+  return updated
 }

@@ -90,22 +90,37 @@ export function evalCondition(condition, doc) {
   return { matched, missing, actual: fieldVal, reason }
 }
 
+function evalItem(item, doc) {
+  if (item.type === 'group') {
+    return evalConditionGroup(item, doc)
+  }
+  const ev = evalCondition(item, doc)
+  return { condition: { ...item, missing: ev.missing }, matched: ev.matched, actual: ev.actual, reason: ev.reason }
+}
+
+function evalConditionGroup(group, doc, logic) {
+  const items = group.conditions || group.items || []
+  if (!items.length) return { matched: true, details: [], actions: [] }
+  const results = items.map(c => evalItem(c, doc))
+  const matched = results.reduce((acc, r, idx) => {
+    if (idx === 0) return r.matched
+    const l = r.condition?.logic || logic || 'AND'
+    return l === 'OR' ? acc || r.matched : acc && r.matched
+  }, false)
+  return { matched, details: results }
+}
+
 export function evalRule(rule, doc) {
   const { conditions, conditionLogic, actions } = rule
-
   if (!conditions || conditions.length === 0) {
     return { matched: true, details: [], actions: actions || [] }
   }
 
-  const results = conditions.map(c => {
-    const ev = evalCondition(c, doc)
-    return { condition: { ...c, missing: ev.missing }, matched: ev.matched, actual: ev.actual, reason: ev.reason }
-  })
-
+  const results = conditions.map(c => evalItem(c, doc))
   const matched = results.reduce((acc, r, idx) => {
     if (idx === 0) return r.matched
-    const logic = r.condition.logic || conditionLogic || 'AND'
-    return logic === 'OR' ? acc || r.matched : acc && r.matched
+    const l = r.condition?.logic || conditionLogic || 'AND'
+    return l === 'OR' ? acc || r.matched : acc && r.matched
   }, false)
 
   return { matched, details: results, actions: matched ? (actions || []) : [] }

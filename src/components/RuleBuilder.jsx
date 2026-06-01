@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getAllRules, createRule, updateRule, deleteRule, toggleRuleEnabled, getAllGroups } from '../services/ruleStorage'
+import { getAllRules, createRule, updateRule, deleteRule, toggleRuleEnabled, getAllGroups, saveRuleWithVersion, updateRuleWithVersion } from '../services/ruleStorage'
 import { addRulesToGroup } from '../services/ruleGroupManager'
 import GroupBulkActions from './GroupBulkActions'
+import VersionHistoryPanel from './VersionHistoryPanel'
+import ConditionGroupEditor from './ConditionGroupEditor'
 import { evalRule, interpolateMessage } from '../services/ruleEngine'
 import { resolveField } from '../utils'
 import { api } from '../api'
@@ -42,14 +44,32 @@ const SEVERITIES = ['critical', 'high', 'medium', 'low', 'info']
 
 const SEV_COLORS = { critical: { dot: '#dc2626', bg: '#fef2f2', darkBg: '#dc26261a', text: '#dc2626', darkText: '#fca5a5' }, high: { dot: '#ea580c', bg: '#fff7ed', darkBg: '#ea580c1a', text: '#ea580c', darkText: '#fdba74' }, medium: { dot: '#ca8a04', bg: '#fefce8', darkBg: '#ca8a041a', text: '#ca8a04', darkText: '#fde047' }, low: { dot: '#16a34a', bg: '#f0fdf4', darkBg: '#16a34a1a', text: '#16a34a', darkText: '#86efac' }, info: { dot: '#2563eb', bg: '#eff6ff', darkBg: '#3b82f61a', text: '#2563eb', darkText: '#93c5fd' } }
 
+function cleanItem(item) {
+  if (item.type === 'group') {
+    return {
+      ...item,
+      logic: item.logic || 'AND',
+      conditions: (item.conditions || item.items || []).map(cleanItem)
+    }
+  }
+  return {
+    ...item,
+    field: item.field || 'rule.description',
+    operator: item.operator || 'contains',
+    value: item.value || '',
+    logic: item.logic || 'AND'
+  }
+}
+
 function cleanRule(r) {
   return {
     ...r, name: r.name || '',
     overwrite: r.overwrite !== false,
     conditionLogic: r.conditionLogic === 'OR' ? 'OR' : 'AND',
-    conditions: (r.conditions || []).map(c => ({ ...c, field: c.field || 'rule.description', operator: c.operator || 'contains', value: c.value || '', logic: c.logic || 'AND' })),
+    conditions: (r.conditions || []).map(cleanItem),
     actions: (r.actions?.length ? r.actions : [{ type: 'alert', params: { severity: 'high', message: '' } }]).map(a => ({ ...a, params: a.params || {} })),
-    enabled: r.enabled !== false
+    enabled: r.enabled !== false,
+    tags: r.tags || []
   }
 }
 
@@ -62,64 +82,6 @@ function Toggle({ checked, onChange }) {
   )
 }
 
-function LogicBadge({ logic, onClick }) {
-  const isOr = (logic || 'AND') === 'OR'
-  return (
-    <button onClick={onClick} title="Click to toggle"
-      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase transition-all duration-150 ${
-        isOr
-          ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-500/30'
-          : 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-500/30'
-      }`}>
-      <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d={isOr ? "M5 12h14M12 5v14" : "M5 12h14"}/></svg>
-      {logic || 'AND'}
-    </button>
-  )
-}
-
-function FieldPicker({ value, onChange, fieldList }) {
-  const [open, setOpen] = useState(false)
-  const [query, setQuery] = useState('')
-  const [focusedOnce, setFocusedOnce] = useState(false)
-  const [pos, setPos] = useState(null)
-  const inputRef = useRef(null)
-  const ref = useRef(null)
-
-  const list = fieldList || COMMON_FIELDS
-  const filtered = query ? list.filter(f => f.toLowerCase().includes(query.toLowerCase())) : list
-
-  useEffect(() => {
-    function handleClick(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
-    document.addEventListener('mousedown', handleClick); return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
-
-  function openDropdown() {
-    setOpen(true)
-    if (inputRef.current) {
-      const r = inputRef.current.getBoundingClientRect()
-      setPos({ top: r.bottom + 4, left: r.left, width: r.width })
-    }
-  }
-
-  return (
-    <div className="flex-1 min-w-0" ref={ref}>
-      <input ref={inputRef} className="w-full bg-transparent outline-none text-soc-stext dark:text-soc-darkstext py-1.5 text-[11px] sm:text-xs" placeholder="field"
-        value={focusedOnce ? query : value} onFocus={() => { openDropdown(); if (!focusedOnce) { setFocusedOnce(true); setQuery(value || '') } }}
-        onChange={e => { setQuery(e.target.value); onChange(e.target.value); openDropdown() }} />
-      {open && pos && (
-        <div style={{ position: 'fixed', top: pos.top, left: pos.left, width: Math.max(pos.width, 200) }}
-          className="bg-white dark:bg-[#1a1d27] border border-[#e5e7eb] dark:border-[#2d3140] rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
-          {filtered.map(f => (
-            <button key={f} type="button" className="w-full text-left px-3 py-1.5 text-[11px] sm:text-xs hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] text-soc-stext dark:text-soc-darkstext truncate transition-colors"
-              onMouseDown={() => { setQuery(''); setFocusedOnce(false); onChange(f); setOpen(false) }}>{f}</button>
-          ))}
-          {filtered.length === 0 && <div className="px-3 py-2 text-[10px] text-[#9ca3af] italic">Custom: {query}</div>}
-        </div>
-      )}
-    </div>
-  )
-}
-
 function SeverityDot({ sev }) {
   const c = SEV_COLORS[sev] || SEV_COLORS.high
   return <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: c.dot }} />
@@ -127,6 +89,10 @@ function SeverityDot({ sev }) {
 
 function conditionsToQuery(conditions, logic) {
   const parts = conditions.map(c => {
+    if (c.type === 'group') {
+      const sub = conditionsToQuery(c.conditions || c.items || [], c.logic || 'AND')
+      return sub ? `(${sub})` : null
+    }
     const neg = c.negate ? 'NOT ' : ''
     const v = c.value?.replace(/[\\"'(){}[\]^~:]/g, '\\$&')
     if (!v && c.operator !== 'exists') return null
@@ -183,6 +149,9 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
   const [sortBy, setSortBy] = useState('name')
   const [sortOrder, setSortOrder] = useState('asc')
   const [addToGroupRuleId, setAddToGroupRuleId] = useState(null)
+  const [saveComment, setSaveComment] = useState('')
+  const [showSaveModal, setShowSaveModal] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
   const { pendingRuleId, setPendingRuleId } = useApp()
   const toast = useToast()
 
@@ -209,7 +178,7 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
 
   useEffect(() => {
     function handleKey(e) {
-      if (e.key === 's' && (e.metaKey || e.ctrlKey) && editing) { e.preventDefault(); handleSave() }
+      if (e.key === 's' && (e.metaKey || e.ctrlKey) && editing && !showSaveModal) { e.preventDefault(); handleSave() }
     }
     document.addEventListener('keydown', handleKey); return () => document.removeEventListener('keydown', handleKey)
   }, [editing, dirty])
@@ -224,16 +193,52 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
 
   function handleSave() {
     if (!editing?.id) return
-    updateRule(editing.id, editing); setDirty(false); refresh()
+    if (showSaveModal) return
+    setShowSaveModal(true)
   }
 
-  function handleSelect(id) {
-    if (dirty && editing) updateRule(editing.id, editing)
+  function doSave(comment) {
+    if (!editing?.id) return
+    saveRuleWithVersion(editing, comment)
+    setDirty(false)
+    setShowSaveModal(false)
+    setSaveComment('')
+    refresh()
+    toast.success('Rule saved with version history')
+  }
+
+  function cancelSave() {
+    setShowSaveModal(false)
+    setSaveComment('')
+    if (pendingSelectId) {
+      const pid = pendingSelectId
+      setPendingSelectId(null)
+      doNavigateToRule(pid)
+    }
+  }
+
+  const [pendingSelectId, setPendingSelectId] = useState(null)
+
+  function doNavigateToRule(id) {
     setSelectedId(id)
     const r = getAllRules().find(x => x.id === id)
     setEditing(r ? cleanRule(JSON.parse(JSON.stringify(r))) : null)
     setDirty(false)
+    setShowHistory(false)
     if (window.innerWidth < 1024) setSidebarOpen(false)
+  }
+
+  function handleSelect(id) {
+    if (dirty && editing) {
+      if (showSaveModal) {
+        setPendingSelectId(id)
+        return
+      }
+      setPendingSelectId(id)
+      setShowSaveModal(true)
+      return
+    }
+    doNavigateToRule(id)
   }
 
   function handleNew() {
@@ -269,22 +274,6 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
 
   function patch(p) { setEditing(prev => prev ? { ...prev, ...p } : null); setDirty(true) }
 
-  function addCondition() {
-    setEditing(prev => prev ? { ...prev, conditions: [...prev.conditions, { id: 'c_' + Date.now(), field: 'rule.description', operator: 'contains', value: '' }] } : null)
-    setDirty(true)
-  }
-
-  function updCondition(idx, p) {
-    setEditing(prev => { if (!prev) return prev; const c = [...prev.conditions]; c[idx] = { ...c[idx], ...p }; return { ...prev, conditions: c } })
-    setDirty(true)
-  }
-
-  function delCondition(idx) {
-    if (!editing || editing.conditions.length <= 1) return
-    setEditing({ ...editing, conditions: editing.conditions.filter((_, i) => i !== idx) })
-    setDirty(true)
-  }
-
   function updAction(idx, p) {
     setEditing(prev => { if (!prev) return prev; const a = [...prev.actions]; a[idx] = { ...a[idx], ...p }; return { ...prev, actions: a } })
     setDirty(true)
@@ -316,7 +305,20 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
     cur[parts[parts.length - 1]] = val
   }
 
+  function flattenConditions(items) {
+    let result = []
+    for (const item of items) {
+      if (item.type === 'group') {
+        result = result.concat(flattenConditions(item.conditions || item.items || []))
+      } else {
+        result.push(item)
+      }
+    }
+    return result
+  }
+
   function generateMockDocs(conditions) {
+    const flat = flattenConditions(conditions)
     const base = {
       '@timestamp': new Date().toISOString(),
       rule: { id: 100001, description: 'Test Event', level: 5, groups: ['test'] },
@@ -327,7 +329,7 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
       full_log: 'Test log entry for rule validation'
     }
     const matchDoc = JSON.parse(JSON.stringify(base))
-    for (const c of conditions) {
+    for (const c of flat) {
       if (c.operator === 'exists') { setNested(matchDoc, c.field, 'present') }
       else if (c.operator === 'inList') { setNested(matchDoc, c.field, c.value.split(',')[0].trim()) }
       else if (c.operator === 'gt' || c.operator === 'gte') {
@@ -621,6 +623,34 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
                     <span className="text-[9px] text-[#3b82f6] font-medium">{selectedRuleIds.length} selected</span>
                   )}
                 </div>
+                {editing && (
+                  <div className="border-t border-[#e5e7eb] dark:border-[#2d3140]">
+                    <button onClick={() => setShowHistory(o => !o)}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-medium text-[#6b7280] dark:text-[#9ca3af] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] transition-colors">
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                      Version History
+                      <svg className={`w-3 h-3 ml-auto transition-transform ${showHistory ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <AnimatePresence>
+                      {showHistory && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden">
+                          <div className="px-3 pb-3">
+                            <VersionHistoryPanel ruleId={editing.id}
+                              onRollback={result => {
+                                setEditing(cleanRule(JSON.parse(JSON.stringify(result))))
+                                setDirty(false)
+                              }}
+                              onExport={newId => {
+                                const r = getAllRules().find(x => x.id === newId)
+                                if (r) { refresh(); setEditing(cleanRule(JSON.parse(JSON.stringify(r)))); setSelectedId(newId); setDirty(false) }
+                              }} />
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
               </div>
             </motion.aside>
           )}
@@ -657,47 +687,18 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
                     <span className="text-[11px] uppercase font-semibold text-[#9ca3af] tracking-wider">Conditions</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="hidden sm:inline text-[10px] text-[#9ca3af]">{editing.conditions.length} condition{editing.conditions.length !== 1 ? 's' : ''}</span>
-                    <button onClick={addCondition} className="gbtn text-xs flex items-center gap-1 bg-[#f3f4f6] dark:bg-[#2d3140] hover:bg-[#e5e7eb] dark:hover:bg-[#374151] transition-colors">
-                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
-                      Add
-                    </button>
+                    <span className="hidden sm:inline text-[10px] text-[#9ca3af]">{editing.conditions.length} item{editing.conditions.length !== 1 ? 's' : ''}</span>
                   </div>
                 </div>
                 <div className="p-3 sm:p-4">
-                  {editing.conditions.length === 0 ? (
-                    <div className="text-xs text-[#9ca3af] py-6 text-center italic">Matches all events <span className="not-italic">—</span> add a condition to filter</div>
-                  ) : (
-                    <div className="space-y-2">
-                      {editing.conditions.map((cond, idx) => (
-                        <div key={cond.id}>
-                          {idx > 0 && (
-                            <div className="flex items-center justify-center py-1.5">
-                              <div className="flex items-center gap-2">
-                                <div className="w-8 sm:w-12 h-px bg-[#e5e7eb] dark:bg-[#2d3140]" />
-                                <LogicBadge logic={cond.logic || editing.conditionLogic} onClick={() => { const l = (cond.logic || editing.conditionLogic) === 'AND' ? 'OR' : 'AND'; updCondition(idx, { logic: l }) }} />
-                                <div className="w-8 sm:w-12 h-px bg-[#e5e7eb] dark:bg-[#2d3140]" />
-                              </div>
-                            </div>
-                          )}
-                          <div className={`flex items-start sm:items-center gap-2 text-xs ${idx > 0 ? 'mt-0' : ''}`}>
-                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 flex-1 bg-[#f9fafb] dark:bg-[#0f1117] rounded-lg border border-[#e5e7eb] dark:border-[#2d3140] p-1.5 sm:pl-2.5 sm:p-1">
-                              <FieldPicker value={cond.field} onChange={v => updCondition(idx, { field: v })} fieldList={fields} />
-                              <div className="hidden sm:block text-[#d1d5db] dark:text-[#4b5563] self-center">|</div>
-                              <select className="bg-transparent outline-none text-soc-stext dark:text-soc-darkstext w-full sm:w-24 py-1 cursor-pointer text-[11px] sm:text-xs" value={cond.operator} onChange={e => updCondition(idx, { operator: e.target.value })}>
-                                {OPERATORS.map(o => <option key={o} value={o}>{o}</option>)}
-                              </select>
-                              <div className="hidden sm:block text-[#d1d5db] dark:text-[#4b5563] self-center">|</div>
-                              <input className="flex-1 bg-transparent outline-none text-soc-stext dark:text-soc-darkstext py-1 text-[11px] sm:text-xs w-full sm:w-auto" placeholder="value" value={cond.value} onChange={e => updCondition(idx, { value: e.target.value })} />
-                            </div>
-                            {editing.conditions.length > 1 && <button onClick={() => delCondition(idx)} className="p-1.5 mt-0.5 sm:mt-0 text-[#9ca3af] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all shrink-0">
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                            </button>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <ConditionGroupEditor
+                    conditions={editing.conditions}
+                    logic={editing.conditionLogic}
+                    fieldList={fields}
+                    depth={0}
+                    onChange={newConditions => { patch({ conditions: newConditions }); setDirty(true) }}
+                    onLogicChange={newLogic => { patch({ conditionLogic: newLogic }); setDirty(true) }}
+                  />
                 </div>
               </div>
 
@@ -962,6 +963,29 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
         onSelectionChange={setSelectedRuleIds}
         onRefresh={refresh}
       />
+
+      <AnimatePresence>
+        {showSaveModal && editing && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={cancelSave}>
+            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
+              className="bg-white dark:bg-[#1a1d27] rounded-xl border border-[#e5e7eb] dark:border-[#2d3140] shadow-xl p-5 max-w-md w-full mx-3" onClick={e => e.stopPropagation()}>
+              <h3 className="text-sm font-semibold text-soc-stext dark:text-soc-darkstext mb-2">Save Rule</h3>
+              <p className="text-xs text-[#6b7280] dark:text-[#9ca3af] mb-3">Why did you change this?</p>
+              <input className="ginput w-full text-xs py-2 px-3 mb-4" autoFocus
+                placeholder="Describe your changes (optional)" value={saveComment}
+                onChange={e => setSaveComment(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') doSave(saveComment); if (e.key === 'Escape') setShowSaveModal(false) }} />
+              <div className="flex items-center justify-end gap-2">
+                <button onClick={cancelSave}
+                  className="gbtn text-xs px-3 py-1.5 bg-[#f3f4f6] dark:bg-[#2d3140] hover:bg-[#e5e7eb] dark:hover:bg-[#374151] transition-colors">Cancel</button>
+                <button onClick={() => doSave(saveComment)}
+                  className="gbtn text-xs px-4 py-1.5 bg-[#3b82f6] text-white hover:bg-[#2563eb] transition-colors">Save</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
