@@ -180,10 +180,19 @@ function evalClientFilter(r, f) {
     case 'is greater than or equal': return Number(fv) >= Number(cv)
     case 'is less than': return Number(fv) < Number(cv)
     case 'is less than or equal': return Number(fv) <= Number(cv)
-    case 'contains': return parts.some(p => p.toLowerCase().includes(cv.toLowerCase()))
+    case 'contains': {
+      const m = parts.some(p => p.toLowerCase().includes(cv.toLowerCase()))
+      return f.negate ? !m : m
+    }
     case 'does not contain': return !parts.some(p => p.toLowerCase().includes(cv.toLowerCase()))
-    case 'starts with': return parts.some(p => p.toLowerCase().startsWith(cv.toLowerCase()))
-    case 'ends with': return parts.some(p => p.toLowerCase().endsWith(cv.toLowerCase()))
+    case 'starts with': {
+      const m = parts.some(p => p.toLowerCase().startsWith(cv.toLowerCase()))
+      return f.negate ? !m : m
+    }
+    case 'ends with': {
+      const m = parts.some(p => p.toLowerCase().endsWith(cv.toLowerCase()))
+      return f.negate ? !m : m
+    }
     case 'is between': {
       const from = f.secondValue?.from || f.params?.from || ''
       const to = f.secondValue?.to || f.params?.to || ''
