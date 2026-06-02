@@ -931,7 +931,7 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
                 </div>
               </div>
 
-              <div className="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-[#16181f]/95 backdrop-blur border-t border-[#e5e7eb] dark:border-[#2d3140] px-3 sm:px-5 py-3 flex items-center gap-2 sm:gap-3 z-10 shadow-[0_-1px_3px_rgba(0,0,0,0.05)]"
+              <div className={`fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-[#16181f]/95 backdrop-blur border-t border-[#e5e7eb] dark:border-[#2d3140] px-3 sm:px-5 py-3 flex items-center gap-2 sm:gap-3 z-10 shadow-[0_-1px_3px_rgba(0,0,0,0.05)] ${selectedRuleIds.length > 0 ? 'hidden' : ''}`}
                 style={{ marginLeft: sidebarOpen ? undefined : 0 }}>
                 <button onClick={handleSave} className="gbtn text-xs flex items-center gap-1.5 bg-[#3b82f6] text-white hover:bg-[#2563eb] active:bg-[#1d4ed8] shadow-sm px-3 sm:px-4 transition-all"
                   title="Ctrl+S">
