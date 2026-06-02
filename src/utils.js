@@ -25,9 +25,10 @@ export function parseDateStr(s) {
 }
 
 export function formatPretty(start, end) {
+  if (start === 'now' && end === 'now') return 'Now'
   const m = start.match(/^now-(\d+)([smhdwMy])$/)
   if (m && end === 'now') {
-    const n = m[1], unit = m[2]
+    const n = Number(m[1]), unit = m[2]
     const names = {
       s: 'second' + (n > 1 ? 's' : ''),
       m: 'minute' + (n > 1 ? 's' : ''),
@@ -39,7 +40,10 @@ export function formatPretty(start, end) {
     }
     return 'Last ' + n + ' ' + names[unit]
   }
-  if (start === 'now' && end === 'now') return 'Now'
+  if (end === 'now') {
+    const dayStart = { 'now/d': 'Today', 'now/w': 'This week', 'now/M': 'This month', 'now/y': 'This year' }
+    if (dayStart[start]) return dayStart[start]
+  }
   const sd = dayjs(start), ed = dayjs(end)
   if (sd.isValid() && ed.isValid()) return sd.format('MMM D, h:mm A') + ' to ' + ed.format('MMM D, h:mm A')
   return start + ' to ' + end

@@ -39,6 +39,10 @@ export function AppProvider({ children }) {
   const refreshRef = useRef(null)
   const filtersRef = useRef(filters)
   useEffect(() => { filtersRef.current = filters }, [filters])
+  const startDateRef = useRef(startDate)
+  const endDateRef = useRef(endDate)
+  useEffect(() => { startDateRef.current = startDate }, [startDate])
+  useEffect(() => { endDateRef.current = endDate }, [endDate])
 
   const setTheme = useCallback(t => {
     setThemeRaw(t)
@@ -55,12 +59,13 @@ export function AppProvider({ children }) {
   const isDark = theme === 'dark'
 
   const resolveTimeRange = useCallback(() => {
-    const start = document.getElementById('dStartDate')?.value || startDate
-    const end = document.getElementById('dEndDate')?.value || endDate
-    const sd = parseDateStr(start)
-    const ed = parseDateStr(end)
+    const sd = parseDateStr(startDateRef.current)
+    const ed = parseDateStr(endDateRef.current)
     return { start_date: sd.toISOString(), end_date: ed.toISOString() }
-  }, [startDate, endDate])
+  }, [])
+
+  const updateStartDate = useCallback(val => { startDateRef.current = val; setStartDate(val) }, [])
+  const updateEndDate = useCallback(val => { endDateRef.current = val; setEndDate(val) }, [])
 
   const doSearch = useCallback(async (opts = {}) => {
     setLoading(true)
@@ -245,7 +250,7 @@ export function AppProvider({ children }) {
   const value = {
     theme, setTheme, isDark, tab, setTab,
     dql, setDql, filters, setFilters, addFilter, editFilter, removeFilter,
-    startDate, setStartDate, endDate, setEndDate,
+    startDate, setStartDate: updateStartDate, endDate, setEndDate: updateEndDate,
     limit, setLimit, index, setIndex,
     sortField, sortOrder, columns,
     toggleColumn, moveColumn, doSort,
