@@ -1,0 +1,451 @@
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
+import { motion } from 'framer-motion'
+import { useApp } from '../context/AppContext'
+
+const OPERATORS_BY_TYPE = {
+  string: [
+    { value: 'is', label: 'is' }, { value: 'is not', label: 'is not' },
+    { value: 'is one of', label: 'is one of' }, { value: 'is not one of', label: 'is not one of' },
+    { value: 'contains', label: 'contains' }, { value: 'does not contain', label: 'does not contain' },
+    { value: 'starts with', label: 'starts with' }, { value: 'ends with', label: 'ends with' },
+    { value: 'exists', label: 'exists' }, { value: 'does not exist', label: 'does not exist' }
+  ],
+  number: [
+    { value: 'is', label: 'is' }, { value: 'is not', label: 'is not' },
+    { value: 'is one of', label: 'is one of' }, { value: 'is not one of', label: 'is not one of' },
+    { value: 'is greater than', label: 'is greater than' },
+    { value: 'is less than', label: 'is less than' },
+    { value: 'is greater than or equal', label: '\u2265' }, { value: 'is less than or equal', label: '\u2264' },
+    { value: 'is between', label: 'is between' }, { value: 'is not between', label: 'is not between' },
+    { value: 'exists', label: 'exists' }, { value: 'does not exist', label: 'does not exist' }
+  ],
+  date: [
+    { value: 'is', label: 'is' }, { value: 'is not', label: 'is not' },
+    { value: 'is after', label: 'is after', actual: 'is greater than' },
+    { value: 'is after or equal', label: 'is after or equal', actual: 'is greater than or equal' },
+    { value: 'is before', label: 'is before', actual: 'is less than' },
+    { value: 'is before or equal', label: 'is before or equal', actual: 'is less than or equal' },
+    { value: 'is between', label: 'is between' }, { value: 'is not between', label: 'is not between' },
+    { value: 'exists', label: 'exists' }, { value: 'does not exist', label: 'does not exist' }
+  ],
+  ip: [
+    { value: 'is', label: 'is' }, { value: 'is not', label: 'is not' },
+    { value: 'is one of', label: 'is one of' }, { value: 'is not one of', label: 'is not one of' },
+    { value: 'contains', label: 'contains' }, { value: 'does not contain', label: 'does not contain' },
+    { value: 'starts with', label: 'starts with' }, { value: 'ends with', label: 'ends with' },
+    { value: 'exists', label: 'exists' }, { value: 'does not exist', label: 'does not exist' }
+  ],
+  boolean: [
+    { value: 'is', label: 'is' }, { value: 'is not', label: 'is not' },
+    { value: 'exists', label: 'exists' }, { value: 'does not exist', label: 'does not exist' }
+  ],
+  array: [
+    { value: 'exists', label: 'exists' }, { value: 'does not exist', label: 'does not exist' }
+  ],
+  nested: [
+    { value: 'exists', label: 'exists' }, { value: 'does not exist', label: 'does not exist' }
+  ]
+}
+
+const DEFAULT_OPS = OPERATORS_BY_TYPE.string
+
+const TYPE_ICONS = {
+  string: { icon: '\uD83D\uDCDD', color: '#7b7b7b' },
+  number: { icon: '\uD83D\uDD22', color: '#e5830e' },
+  date: { icon: '\uD83D\uDCC5', color: '#b77c4f' },
+  ip: { icon: '\uD83C\uDF10', color: '#8b5cf6' },
+  boolean: { icon: '\u2705', color: '#1ea59a' },
+  object: { icon: '\uD83D\uDD17', color: '#7b7b7b' },
+  array: { icon: '\uD83D\uDCCB', color: '#06b6d4' },
+  nested: { icon: '\uD83D\uDD17', color: '#22c55e' },
+  keyword: { icon: '\uD83D\uDCDD', color: '#7b7b7b' },
+  text: { icon: '\uD83D\uDCDD', color: '#7b7b7b' },
+  long: { icon: '\uD83D\uDD22', color: '#e5830e' },
+  integer: { icon: '\uD83D\uDD22', color: '#e5830e' },
+  float: { icon: '\uD83D\uDD22', color: '#e5830e' },
+  double: { icon: '\uD83D\uDD22', color: '#e5830e' }
+}
+
+function mapElasticType(esType) {
+  if (!esType) return 'string'
+  const t = esType.toLowerCase()
+  if (['long', 'integer', 'short', 'byte', 'float', 'double', 'half_float', 'scaled_float', 'unsigned_long'].includes(t)) return 'number'
+  if (['date', 'date_nanos'].includes(t)) return 'date'
+  if (['ip'].includes(t)) return 'ip'
+  if (['boolean'].includes(t)) return 'boolean'
+  if (['keyword', 'text', 'string'].includes(t)) return 'string'
+  if (['array'].includes(t)) return 'array'
+  if (['nested'].includes(t)) return 'nested'
+  if (['object', 'geo_point', 'geo_shape'].includes(t)) return 'object'
+  return 'string'
+}
+
+function ComboBox({ options, value, onChange, placeholder, disabled }) {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const [activeIdx, setActiveIdx] = useState(-1)
+  const inputRef = useRef(null)
+  const rootRef = useRef(null)
+
+  const selected = options.find(o => (o.actual || o.value) === value)
+
+  const filtered = useMemo(() => {
+    if (!search) return options
+    const q = search.toLowerCase()
+    return options.filter(o => o.label.toLowerCase().includes(q) || (o.value || '').toLowerCase().includes(q))
+  }, [options, search])
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  const select = useCallback((opt) => {
+    onChange(opt.actual || opt.value)
+    setOpen(false)
+    setSearch('')
+    setActiveIdx(-1)
+  }, [onChange])
+
+  const handleKey = useCallback((e) => {
+    switch (e.key) {
+      case 'ArrowDown': e.preventDefault(); setActiveIdx(p => Math.min(p + 1, filtered.length - 1)); break
+      case 'ArrowUp': e.preventDefault(); setActiveIdx(p => Math.max(p - 1, 0)); break
+      case 'Enter': e.preventDefault(); if (filtered[activeIdx]) select(filtered[activeIdx]); break
+      case 'Escape': e.preventDefault(); setOpen(false); break
+    }
+  }, [filtered, activeIdx, select])
+
+  return (
+    <div ref={rootRef} className="relative">
+      <div
+        className={`ginput w-full flex items-center gap-1 px-2 py-1.5 text-xs cursor-pointer ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+        onClick={() => { if (!disabled) { setOpen(!open); setTimeout(() => inputRef.current?.focus(), 50) } }}
+        tabIndex={-1}
+      >
+        {open ? (
+          <input
+            ref={inputRef}
+            type="text"
+            value={search}
+            onChange={e => { setSearch(e.target.value); setActiveIdx(0) }}
+            onKeyDown={handleKey}
+            placeholder="Type to search..."
+            className="flex-1 bg-transparent outline-none border-none text-xs text-[#202124] dark:text-[#e8eaed]"
+            autoFocus
+            onClick={e => e.stopPropagation()}
+          />
+        ) : (
+          <span className={`flex-1 ${!selected ? 'text-[#9ca3af]' : 'text-[#202124] dark:text-[#e8eaed]'}`}>
+            {selected ? selected.label : (placeholder || 'Select...')}
+          </span>
+        )}
+        <svg className="w-3 h-3 text-[#9ca3af] shrink-0 transition-transform" style={{ transform: open ? 'rotate(180deg)' : '' }} viewBox="0 0 16 16" fill="currentColor">
+          <path d="M13.069 5.157 8.384 9.768a.546.546 0 0 1-.768 0L2.93 5.158a.552.552 0 0 0-.771 0 .53.53 0 0 0 0 .759l4.684 4.61c.641.631 1.672.63 2.312 0l4.684-4.61a.53.53 0 0 0 0-.76.552.552 0 0 0-.771 0Z"/>
+        </svg>
+      </div>
+      {open && filtered.length > 0 && (
+        <div className="absolute top-full left-0 right-0 mt-0.5 max-h-48 overflow-y-auto bg-white dark:bg-[#1a1d27] border border-[#e5e7eb] dark:border-[#2d3140] rounded shadow-lg z-20">
+          {filtered.map((opt, i) => (
+            <button
+              key={opt.value}
+              onClick={() => select(opt)}
+              className={`w-full text-left px-2.5 py-1.5 text-xs transition-colors ${
+                i === activeIdx
+                  ? 'bg-[#e8f0fe] dark:bg-[#2d3140] text-[#1a73e8] dark:text-[#8ab4f8]'
+                  : (opt.actual || opt.value) === value
+                    ? 'bg-[#f3f4f6] dark:bg-[#111318] text-[#202124] dark:text-[#e8eaed]'
+                    : 'text-[#202124] dark:text-[#e8eaed] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140]'
+              }`}
+            >{opt.label}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function FilterEditor({ filter = null, onClose, onSave }) {
+  const { fields, addFilter, loadFields } = useApp()
+  const isEdit = !!filter
+
+  const initOp = filter?.operator || (filter?.type === 'exists' ? 'exists' : 'is')
+  const [field, setField] = useState(filter?.field || '')
+  const [operator, setOperator] = useState(initOp)
+  const [value, setValue] = useState(filter?.value && filter.value !== '_exists_' ? filter.value : '')
+  const [secondValue, setSecondValue] = useState(filter?.secondValue || '')
+  const [negate, setNegate] = useState(filter?.negate || false)
+  const [customLabel, setCustomLabel] = useState('')
+  const [showCustomLabel, setShowCustomLabel] = useState(false)
+  const [fieldSearch, setFieldSearch] = useState('')
+  const [showFieldDropdown, setShowFieldDropdown] = useState(false)
+
+  const fieldRef = useRef(null)
+  const rootRef = useRef(null)
+
+  useEffect(() => { loadFields() }, [])
+
+  useEffect(() => {
+    if (showFieldDropdown && fieldRef.current) fieldRef.current.focus()
+  }, [showFieldDropdown])
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (rootRef.current && !rootRef.current.contains(e.target)) onClose?.()
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [onClose])
+
+  const fieldMeta = useMemo(() => fields.find(f => f.name === field), [fields, field])
+  const fieldTypeLabel = fieldMeta?.type || ''
+  const fieldType = mapElasticType(fieldTypeLabel)
+  const ops = OPERATORS_BY_TYPE[fieldType] || DEFAULT_OPS
+
+  const isRangeOp = operator === 'is between' || operator === 'is not between'
+  const isListOp = operator === 'is one of' || operator === 'is not one of'
+  const isExistsOp = operator === 'exists' || operator === 'does not exist'
+  const isNegatable = !isExistsOp
+
+  const filteredFields = useMemo(() => {
+    if (!fieldSearch) return fields.slice(0, 100)
+    const q = fieldSearch.toLowerCase()
+    return fields.filter(f => f.name.toLowerCase().includes(q)).slice(0, 100)
+  }, [fields, fieldSearch])
+
+  const doSave = () => {
+    if (!field) return
+    if (!isExistsOp && !isRangeOp && !value) return
+    if (isRangeOp && (!value || !secondValue)) return
+
+    if (isEdit && filter) {
+      onSave?.({
+        ...filter,
+        field,
+        value: isExistsOp ? '_exists_' : value,
+        secondValue: isRangeOp ? secondValue : null,
+        operator,
+        type: isExistsOp ? 'exists' : 'value',
+        negate: isNegatable ? negate : false,
+        customLabel: showCustomLabel ? customLabel || null : null
+      })
+    } else {
+      if (isExistsOp) addFilter(field, value || '__exists__', false, operator)
+      else if (isRangeOp) addFilter(field, value, negate, operator, { from: value, to: secondValue })
+      else addFilter(field, value, negate, operator)
+    }
+    onClose?.()
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -4 }}
+      className="gcard absolute top-full left-0 mt-1 z-50 shadow-xl"
+      style={{ width: 600 }}
+      ref={rootRef}
+      onClick={e => e.stopPropagation()}
+    >
+      <div className="px-3 py-2 border-b border-[#e5e7eb] dark:border-[#2d3140]">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-[#202124] dark:text-[#e8eaed]">
+            {isEdit ? 'Edit filter' : 'Add filter'}
+          </span>
+          <button className="text-[11px] text-[#1a73e8] dark:text-[#8ab4f8] hover:underline font-medium">
+            Edit as Query DSL
+          </button>
+        </div>
+      </div>
+
+      <div className="p-3 space-y-2.5">
+        <div className="flex gap-2">
+          <div className="flex-[2] min-w-0">
+            <label className="block text-[10px] text-[#5f6368] dark:text-[#9aa0a6] mb-0.5 font-medium">Field</label>
+            <div className="relative">
+              {showFieldDropdown ? (
+                <div className="relative">
+                  <svg className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[#9ca3af] pointer-events-none z-10" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="m11.271 11.978 3.872 3.873a.502.502 0 0 0 .708 0 .502.502 0 0 0 0-.708l-3.565-3.564c2.38-2.747 2.267-6.923-.342-9.532-2.73-2.73-7.17-2.73-9.898 0-2.728 2.729-2.728 7.17 0 9.9a6.955 6.955 0 0 0 4.949 2.05.5.5 0 0 0 0-1 5.96 5.96 0 0 1-4.242-1.757 6.01 6.01 0 0 1 0-8.486c2.337-2.34 6.143-2.34 8.484 0a6.01 6.01 0 0 1 0 8.486.5.5 0 0 0 .034.738Z"/>
+                  </svg>
+                  <input
+                    ref={fieldRef}
+                    type="text"
+                    value={fieldSearch}
+                    onChange={e => { setFieldSearch(e.target.value); setField('') }}
+                    placeholder="Search fields..."
+                    className="ginput w-full pl-7 pr-2 py-1.5 text-xs"
+                    onKeyDown={e => {
+                      if (e.key === 'Escape') setShowFieldDropdown(false)
+                      if (e.key === 'Enter' && filteredFields.length === 1) {
+                        setField(filteredFields[0].name); setFieldSearch(''); setShowFieldDropdown(false)
+                      }
+                    }}
+                    autoFocus
+                  />
+                </div>
+              ) : (
+                <div
+                  onClick={() => setShowFieldDropdown(true)}
+                  className="ginput w-full flex items-center gap-2 px-2 py-1.5 text-xs cursor-pointer text-left text-[#202124] dark:text-[#e8eaed] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] transition-colors"
+                >
+                  {field ? (
+                    <>
+                      {fieldMeta && (() => {
+                        const t = mapElasticType(fieldMeta.type)
+                        const icon = TYPE_ICONS[t] || TYPE_ICONS.string
+                        return <span className="flex items-center justify-center shrink-0 text-[10px]" style={{ width: 18, height: 18, borderRadius: 3, border: `1px solid ${icon.color}40`, color: icon.color }}>{icon.icon}</span>
+                      })()}
+                      <span className="flex-1">{field}</span>
+                      {fieldTypeLabel && <span className="text-[9px] text-[#9ca3af] uppercase">{fieldTypeLabel}</span>}
+                    </>
+                  ) : (
+                    <span className="text-[#9ca3af]">Select a field first</span>
+                  )}
+                  <svg className="w-3 h-3 text-[#9ca3af] shrink-0" viewBox="0 0 16 16" fill="currentColor"><path d="M13.069 5.157 8.384 9.768a.546.546 0 0 1-.768 0L2.93 5.158a.552.552 0 0 0-.771 0 .53.53 0 0 0 0 .759l4.684 4.61c.641.631 1.672.63 2.312 0l4.684-4.61a.53.53 0 0 0 0-.76.552.552 0 0 0-.771 0Z"/></svg>
+                </div>
+              )}
+              {showFieldDropdown && (
+                <div className="absolute top-full left-0 right-0 mt-0.5 max-h-48 overflow-y-auto bg-white dark:bg-[#1a1d27] border border-[#e5e7eb] dark:border-[#2d3140] rounded shadow-lg z-10">
+                  {filteredFields.map(f => {
+                    const t = mapElasticType(f.type)
+                    const icon = TYPE_ICONS[t] || TYPE_ICONS.string
+                    return (
+                      <button
+                        key={f.name}
+                        onClick={() => { setField(f.name); setFieldSearch(''); setShowFieldDropdown(false) }}
+                        className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-left hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] transition-colors text-[#202124] dark:text-[#e8eaed]"
+                      >
+                        <span className="flex items-center justify-center shrink-0 text-[10px]" style={{ width: 18, height: 18, borderRadius: 3, border: `1px solid ${icon.color}40`, color: icon.color }}>{icon.icon}</span>
+                        <span className="flex-1 truncate">{f.name}</span>
+                        {f.type && <span className="text-[9px] text-[#9ca3af] uppercase">{f.type}</span>}
+                      </button>
+                    )
+                  })}
+                  {filteredFields.length === 0 && (
+                    <div className="px-2 py-3 text-[10px] text-[#9ca3af] text-center">No matching fields</div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div style={{ flexBasis: 160 }} className="min-w-0">
+            <label className="block text-[10px] text-[#5f6368] dark:text-[#9aa0a6] mb-0.5 font-medium">Operator</label>
+            <ComboBox
+              options={ops}
+              value={operator}
+              onChange={val => { setOperator(val); if (['exists', 'does not exist'].includes(val)) { setValue(''); setSecondValue('') } }}
+              placeholder={field ? 'Select operator' : 'Waiting'}
+              disabled={!field}
+            />
+          </div>
+        </div>
+
+        {field && (
+          <div data-test-subj="filterParams">
+            {!isExistsOp && !isRangeOp && !isListOp && (
+              <div>
+                <label className="block text-[10px] text-[#5f6368] dark:text-[#9aa0a6] mb-0.5 font-medium">Value</label>
+                <input
+                  type="text"
+                  value={value}
+                  onChange={e => setValue(e.target.value)}
+                  placeholder={fieldType === 'boolean' ? 'true / false' : 'Enter value...'}
+                  className="ginput w-full px-2 py-1.5 text-xs"
+                  onKeyDown={e => e.key === 'Enter' && doSave()}
+                  autoFocus
+                />
+              </div>
+            )}
+
+            {isListOp && (
+              <div>
+                <label className="block text-[10px] text-[#5f6368] dark:text-[#9aa0a6] mb-0.5 font-medium">Values (comma-separated)</label>
+                <textarea
+                  value={value}
+                  onChange={e => setValue(e.target.value)}
+                  placeholder="val1, val2, val3"
+                  rows={2}
+                  className="ginput w-full px-2 py-1.5 text-xs resize-none"
+                  onKeyDown={e => { if (e.key === 'Enter' && e.metaKey) doSave() }}
+                />
+              </div>
+            )}
+
+            {isRangeOp && (
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="block text-[10px] text-[#5f6368] dark:text-[#9aa0a6] mb-0.5 font-medium">From</label>
+                  <input type="text" value={value} onChange={e => setValue(e.target.value)} placeholder="Min" className="ginput w-full px-2 py-1.5 text-xs" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-[10px] text-[#5f6368] dark:text-[#9aa0a6] mb-0.5 font-medium">To</label>
+                  <input type="text" value={secondValue} onChange={e => setSecondValue(e.target.value)} placeholder="Max" className="ginput w-full px-2 py-1.5 text-xs" onKeyDown={e => e.key === 'Enter' && doSave()} />
+                </div>
+              </div>
+            )}
+
+            {isExistsOp && (
+              <div className="text-xs text-[#9ca3af] py-1">
+                {operator === 'exists'
+                  ? 'Results must have a value for this field'
+                  : 'Results must not have a value for this field'}
+              </div>
+            )}
+
+            {isNegatable && (
+              <div className="flex items-center gap-2 mt-2">
+                <label className="flex items-center gap-1.5 text-xs text-[#202124] dark:text-[#e8eaed] cursor-pointer select-none">
+                  <input type="checkbox" checked={negate} onChange={e => setNegate(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded border-[#d1d5db] text-[#3b82f6] focus:ring-[#3b82f6]/30" />
+                  <span>Negate (NOT)</span>
+                </label>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="px-3 py-2 border-t border-[#e5e7eb] dark:border-[#2d3140]">
+        <label className="flex items-center gap-2 text-xs text-[#202124] dark:text-[#e8eaed] cursor-pointer select-none">
+          <button
+            role="switch"
+            type="button"
+            aria-checked={showCustomLabel}
+            onClick={() => setShowCustomLabel(!showCustomLabel)}
+            className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${showCustomLabel ? 'bg-[#3b82f6]' : 'bg-[#d1d5db] dark:bg-[#3c4043]'}`}
+          >
+            <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${showCustomLabel ? 'translate-x-[14px]' : 'translate-x-[2px]'}`} />
+          </button>
+          <span>Create custom label?</span>
+        </label>
+        {showCustomLabel && (
+          <input
+            type="text"
+            value={customLabel}
+            onChange={e => setCustomLabel(e.target.value)}
+            placeholder="Custom label for this filter"
+            className="ginput w-full px-2 py-1 text-xs mt-1.5"
+          />
+        )}
+      </div>
+
+      <div className="flex items-center justify-between px-3 py-2.5 border-t border-[#e5e7eb] dark:border-[#2d3140] bg-[#f9fafb] dark:bg-[#111318] rounded-b-lg">
+        <div />
+        <div className="flex items-center gap-2">
+          <button onClick={onClose}
+            className="px-3 py-1 text-xs font-medium rounded text-[#1a73e8] dark:text-[#8ab4f8] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] transition-colors"
+          >Cancel</button>
+          <button onClick={doSave}
+            disabled={!field || (!isExistsOp && !isRangeOp && !value) || (isRangeOp && (!value || !secondValue))}
+            className="px-3 py-1 text-xs font-semibold rounded bg-[#3b82f6] text-white hover:bg-[#2563eb] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >{isEdit ? 'Save' : 'Add'}</button>
+        </div>
+      </div>
+    </motion.div>
+  )
+}

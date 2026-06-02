@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useApp } from '../context/AppContext'
 import DateRangePicker from './DateRangePicker'
 import RefreshInterval from './RefreshInterval'
+import FilterEditor from './FilterEditor'
 
 const COMMON = [
   { label: 'Today', start: 'now/d', end: 'now' },
@@ -17,22 +18,87 @@ const COMMON = [
   { label: 'Last 1 year', start: 'now-1y', end: 'now' }
 ]
 
+const OP_LABELS = {
+  'is': ':',
+  'is not': '\u2260',
+  'is one of': 'in',
+  'is not one of': 'not in',
+  'contains': '~',
+  'does not contain': '!~',
+  'starts with': '^',
+  'ends with': '$',
+  'exists': 'exists',
+  'does not exist': '!exists',
+  'is greater than': '>',
+  'is greater than or equal': '\u2265',
+  'is less than': '<',
+  'is less than or equal': '\u2264',
+  'is between': 'between',
+  'is not between': '!between'
+}
+
+function FilterChip({ filter, onEdit, onRemove }) {
+  const opLabel = OP_LABELS[filter.operator] || ':'
+  const isNeg = filter.negate
+  const isExists = filter.operator === 'exists' || filter.operator === 'does not exist'
+  const isRange = filter.operator === 'is between' || filter.operator === 'is not between'
+  const isList = filter.operator === 'is one of' || filter.operator === 'is not one of'
+
+  let displayVal = filter.value
+  if (isExists) displayVal = ''
+  else if (isRange) {
+    const to = filter.secondValue?.to || filter.params?.to || ''
+    displayVal = `${filter.value} to ${to}`
+  }
+  else if (isList) displayVal = filter.value
+
+  return (
+    <motion.span
+      layout
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      className={`inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-xxs font-medium border cursor-pointer group transition-colors ${
+        isNeg
+          ? 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30'
+          : 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/30'
+      }`}
+      onClick={() => onEdit?.(filter)}
+      title={`${isNeg ? 'NOT ' : ''}${filter.field} ${opLabel} ${displayVal || ''}`}
+    >
+      {isNeg && <span className="font-bold text-[9px] uppercase mr-0.5">NOT</span>}
+      <span className="max-w-[90px] truncate">{filter.field}</span>
+      <span className="opacity-60 mx-0.5">{opLabel}</span>
+      {displayVal && <span className="max-w-[80px] truncate">{displayVal}</span>}
+      <button
+        onClick={e => { e.stopPropagation(); onRemove(filter.id) }}
+        className="ml-0.5 w-3.5 h-3.5 flex items-center justify-center rounded hover:bg-black/10 dark:hover:bg-white/10 font-bold leading-none text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+      >&times;</button>
+    </motion.span>
+  )
+}
+
 export default function QueryBar() {
-  const { dql, setDql, filters, removeFilter, addFilter, doSearch, loading, fields, index, setIndex, limit, setLimit, startDate, setStartDate, endDate, setEndDate, isDark } = useApp()
+  const { dql, setDql, filters, removeFilter, addFilter, editFilter, doSearch, loading, fields, index, setIndex, limit, setLimit, startDate, setStartDate, endDate, setEndDate, isDark } = useApp()
   const [showAddFilter, setShowAddFilter] = useState(false)
   const [showQuick, setShowQuick] = useState(false)
-  const [afield, setAfield] = useState('')
-  const [aval, setAval] = useState('')
-  const [aneg, setAneg] = useState(false)
+  const [editingFilter, setEditingFilter] = useState(null)
 
   const handleKeyDown = e => { if (e.key === 'Enter') doSearch() }
 
-  const doAddFilter = () => {
-    if (!afield || !aval) return
-    addFilter(afield, aval, aneg)
-    setShowAddFilter(false)
-    setAfield(''); setAval(''); setAneg(false)
+  const handleEdit = (filter) => {
+    setEditingFilter(filter)
+    setShowAddFilter(true)
+  }
+
+  const handleEditorSave = (updated) => {
+    editFilter(updated.id, updated)
     doSearch()
+  }
+
+  const handleEditorClose = () => {
+    setShowAddFilter(false)
+    setEditingFilter(null)
   }
 
   const applyQuick = (c) => {
@@ -100,52 +166,33 @@ export default function QueryBar() {
       <div className="flex items-center gap-1 flex-wrap">
         <div className="relative">
           <button
-            onClick={() => setShowAddFilter(!showAddFilter)}
+            onClick={() => { setShowAddFilter(!showAddFilter); setEditingFilter(null) }}
             className={`px-1.5 py-0.5 text-[10px] border rounded ${bg} ${isDark ? 'text-soc-darkstext' : 'text-soc-stext'}`}
+            title="Add filter"
           >{'\uD83D\uDD3D'}</button>
           <AnimatePresence>
             {showAddFilter && (
-              <motion.div
-                initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
-                className={`gcard absolute top-full left-0 mt-1 z-30 p-2 shadow-lg`} style={{ width: 260 }}
-              >
-                <select value={afield} onChange={e => setAfield(e.target.value)} className={`ginput w-full px-2 py-1 text-xs mb-1`}>
-                  <option value="">Select field...</option>
-                  {fields.slice(0, 50).map(f => <option key={f.name} value={f.name}>{f.name}</option>)}
-                </select>
-                <input type="text" value={aval} onChange={e => setAval(e.target.value)} placeholder="Value" className={`ginput w-full px-2 py-1 text-xs mb-1`} onKeyDown={e => e.key === 'Enter' && doAddFilter()} />
-                <label className={`flex items-center gap-1 text-xs mb-1 ${isDark ? 'text-soc-darkstext' : 'text-soc-stext'}`}>
-                  <input type="checkbox" checked={aneg} onChange={e => setAneg(e.target.checked)} /> Negate (NOT)
-                </label>
-                <div className="flex gap-1">
-                  <button onClick={() => setShowAddFilter(false)} className={`px-2 py-0.5 text-xs border rounded ${isDark ? 'border-soc-darkborder text-soc-darkstext' : 'border-soc-border text-soc-stext'}`}>Cancel</button>
-                  <button onClick={doAddFilter} className="gbtn-primary px-2 py-0.5 text-xs font-semibold rounded">Add</button>
-                </div>
-              </motion.div>
+              <FilterEditor
+                filter={editingFilter}
+                onClose={handleEditorClose}
+                onSave={editingFilter ? handleEditorSave : undefined}
+                anchorEl={null}
+              />
             )}
           </AnimatePresence>
         </div>
 
         <AnimatePresence>
           {filters.map(f => (
-            <motion.span
-              key={f.id} layout
-              initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
-              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xxs font-medium border ${
-                f.negate
-                  ? 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300'
-                  : 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300'
-              }`}
-            >
-              {f.negate && <span className="font-bold text-[9px] uppercase">NOT</span>}
-              <span>{f.field}</span>
-              <span className="opacity-50">:</span>
-              <span className="max-w-[80px] truncate">{f.value}</span>
-              <button onClick={() => { removeFilter(f.id); doSearch() }} className="ml-0.5 hover:opacity-70 font-bold leading-none">&times;</button>
-            </motion.span>
+            <FilterChip
+              key={f.id}
+              filter={f}
+              onEdit={handleEdit}
+              onRemove={(id) => { removeFilter(id); doSearch() }}
+            />
           ))}
         </AnimatePresence>
-        <button onClick={() => setShowAddFilter(true)} className="text-[10px] text-[#1a73e8] dark:text-[#8ab4f8] hover:underline px-1">+ Add filter</button>
+        <button onClick={() => { setShowAddFilter(true); setEditingFilter(null) }} className="text-[10px] text-[#1a73e8] dark:text-[#8ab4f8] hover:underline px-1">+ Add filter</button>
       </div>
     </div>
   )

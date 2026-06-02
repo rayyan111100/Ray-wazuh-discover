@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
 import { api } from '../api'
-import { applyClientFilters, buildDqlText, parseDateStr } from '../utils'
+import { applyClientFilters, buildDqlText, parseDateStr, COMMON_FIELDS, inferFieldTypes } from '../utils'
 import { getRule, getAllRules, updateRule, deleteRule, toggleRuleEnabled } from '../services/ruleStorage'
 import { addRulesToGroup, moveRulesToGroup, removeRulesFromGroup } from '../services/ruleGroupManager'
 
@@ -82,8 +82,7 @@ export function AppProvider({ children }) {
       const d = await api('search', params)
       const totalRes = d.total || 0
       let res = d.results || []
-      const haveClient = filters.some(f => f.negate || f.type === 'exists')
-      if (haveClient || dql) res = applyClientFilters(res, filters)
+      res = applyClientFilters(res, filters)
       setTotal(totalRes)
       setResults(res)
       if (opts.noHistogram !== true) loadHistogram(params)
@@ -96,16 +95,21 @@ export function AppProvider({ children }) {
     }
   }, [filters, dql, limit, index, sortField, sortOrder, resolveTimeRange])
 
-  const addFilter = useCallback((field, value, negate) => {
+  const addFilter = useCallback((field, value, negate, operator, params) => {
     setFilters(prev => {
       const isExists = value === '__exists__'
       const fv = isExists ? '_exists_' : String(value)
       const ft = isExists ? 'exists' : 'value'
+      const op = operator || (isExists ? 'exists' : negate ? 'is not' : 'is')
       if (ft === 'exists') negate = false
-      const dup = prev.find(f => f.field === field && f.value === fv && f.type === ft)
+      const dup = prev.find(f => f.field === field && f.value === fv && (f.operator || 'is') === op)
       if (dup) return prev
-      return [...prev, { id: genId(), field, value: fv, negate: !!negate, type: ft }]
+      return [...prev, { id: genId(), field, value: fv, negate: !!negate, type: ft, operator: op, params: params || null, secondValue: null }]
     })
+  }, [])
+
+  const editFilter = useCallback((id, updates) => {
+    setFilters(prev => prev.map(f => f.id === id ? { ...f, ...updates } : f))
   }, [])
 
   const removeFilter = useCallback(id => {
@@ -122,7 +126,28 @@ export function AppProvider({ children }) {
   }, [])
 
   const loadFields = useCallback(async () => {
-    try { const d = await api('fields', { index }); setFields(d.fields || []) } catch {}
+    let fieldList = []
+    try {
+      const d = await api('fields', { index })
+      if (d.fields && Array.isArray(d.fields) && d.fields.length > 0) {
+        fieldList = d.fields
+      }
+    } catch {}
+    if (fieldList.length === 0) {
+      try {
+        const sample = await api('search', { index, limit: 3, sort: '@timestamp', order: 'desc' })
+        const docs = sample.results || []
+        if (docs.length > 0) {
+          fieldList = inferFieldTypes(docs)
+        }
+      } catch {}
+    }
+    const nameSet = new Set(fieldList.map(f => f.name))
+    const merged = [...fieldList]
+    for (const name of COMMON_FIELDS) {
+      if (!nameSet.has(name)) merged.push({ name, type: 'keyword' })
+    }
+    setFields(merged)
   }, [index])
 
   const toggleColumn = useCallback(name => {
@@ -213,7 +238,7 @@ export function AppProvider({ children }) {
 
   const value = {
     theme, setTheme, isDark, tab, setTab,
-    dql, setDql, filters, setFilters, addFilter, removeFilter,
+    dql, setDql, filters, setFilters, addFilter, editFilter, removeFilter,
     startDate, setStartDate, endDate, setEndDate,
     limit, setLimit, index, setIndex,
     sortField, sortOrder, columns,
