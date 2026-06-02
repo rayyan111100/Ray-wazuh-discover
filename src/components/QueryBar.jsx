@@ -111,56 +111,58 @@ export default function QueryBar() {
     <div className="space-y-1.5">
       <div className={`flex items-center gap-1.5 px-2 py-1 border rounded ${bg}`}>
         <button className="text-xs text-soc-stext dark:text-soc-darkstext p-0.5 hover:opacity-70 shrink-0" title="Saved queries">{'\uD83D\uDCC2'}</button>
-        <input
-          type="text"
-          value={dql}
-          onChange={e => setDql(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Search — rule.level:>=12 OR agent.name:*"
-          className={`flex-1 min-w-[80px] px-1.5 py-1 text-xs border-none outline-none rounded ginput`}
-        />
-        <span className="text-[10px] font-semibold text-soc-stext dark:text-soc-darkstext uppercase px-1.5 py-0.5 rounded border border-soc-border dark:border-soc-darkborder shrink-0">DQL</span>
-
-        <div className="relative">
-          <button
-            onClick={(e) => { e.stopPropagation(); setShowQuick(!showQuick) }}
-            className="px-1 py-1 text-xs rounded text-soc-stext dark:text-soc-darkstext hover:bg-soc-border/30 dark:hover:bg-soc-darkborder/30 shrink-0"
-            title="Quick date select"
-          >{'\uD83D\uDCC5'}</button>
-          <AnimatePresence>
-            {showQuick && (
-              <motion.div
-                initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
-                className={`gcard absolute top-full right-0 mt-1 z-30 w-48 p-2 shadow-lg`}
-              >
-                <div className="text-xs font-medium text-[#5f6368] dark:text-[#9aa0a6] uppercase tracking-wide mb-1">Commonly used</div>
-                {COMMON.map((c, i) => (
-                  <button key={i} onClick={() => applyQuick(c)}
-                    className="block w-full text-left px-2 py-1 text-xs rounded text-[#1a73e8] dark:text-[#8ab4f8] hover:bg-soc-border/30 dark:hover:bg-soc-darkborder/30"
-                  >{c.label}</button>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
+        <div className="flex-1 min-w-0 flex items-center gap-1.5">
+          <input
+            type="text"
+            value={dql}
+            onChange={e => setDql(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Search — rule.level:>=12 OR agent.name:*"
+            className="flex-1 min-w-[60px] px-1.5 py-1 text-xs border-none outline-none rounded ginput"
+          />
+          <span className="text-[10px] font-semibold text-soc-stext dark:text-soc-darkstext uppercase px-1.5 py-0.5 rounded border border-soc-border dark:border-soc-darkborder shrink-0">DQL</span>
         </div>
-
-        <DateRangePicker />
-        <RefreshInterval />
-        <select value={limit} onChange={e => setLimit(parseInt(e.target.value))} className={`ginput px-1.5 py-1 text-xs w-14`}>
-          <option>20</option><option>50</option><option>100</option><option>200</option><option>500</option>
-        </select>
-        <select value={index} onChange={e => setIndex(e.target.value)} className={`ginput px-1.5 py-1 text-xs max-w-[140px] hidden md:block`} title="Index pattern">
-          <option value="wazuh-alerts-4.x-*">wazuh-alerts-4.x-*</option>
-          <option value="wazuh-alerts-*">wazuh-alerts-*</option>
-          <option value="*">* (all)</option>
-        </select>
-        <button
-          onClick={() => doSearch()}
-          disabled={loading}
-          className={`px-2.5 py-1 text-xs font-semibold rounded transition-all whitespace-nowrap shrink-0 ${
-            loading ? 'bg-soc-stext/30 text-white cursor-not-allowed' : 'gbtn-primary'
-          }`}
-        >{loading ? '\u23F3' : '\u27F3'}</button>
+        <div className="flex items-center gap-1 shrink-0">
+          <div className="relative">
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowQuick(!showQuick) }}
+              className="px-1 py-1 text-xs rounded text-soc-stext dark:text-soc-darkstext hover:bg-soc-border/30 dark:hover:bg-soc-darkborder/30"
+              title="Quick date select"
+            >{'\uD83D\uDCC5'}</button>
+            <AnimatePresence>
+              {showQuick && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+                  className={'gcard absolute top-full right-0 mt-1 z-30 w-48 p-2 shadow-lg'}
+                >
+                  <div className="text-xs font-medium text-[#5f6368] dark:text-[#9aa0a6] uppercase tracking-wide mb-1">Commonly used</div>
+                  {COMMON.map((c, i) => (
+                    <button key={i} onClick={() => applyQuick(c)}
+                      className="block w-full text-left px-2 py-1 text-xs rounded text-[#1a73e8] dark:text-[#8ab4f8] hover:bg-soc-border/30 dark:hover:bg-soc-darkborder/30"
+                    >{c.label}</button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+          <DateRangePicker />
+          <RefreshInterval />
+          <select value={limit} onChange={e => setLimit(parseInt(e.target.value))} className={'ginput px-1.5 py-1 text-xs w-12'}>
+            <option>20</option><option>50</option><option>100</option><option>200</option><option>500</option>
+          </select>
+          <select value={index} onChange={e => setIndex(e.target.value)} className={'ginput px-1.5 py-1 text-xs max-w-[120px] hidden md:block'} title="Index pattern">
+            <option value="wazuh-alerts-4.x-*">wazuh-alerts-4.x-*</option>
+            <option value="wazuh-alerts-*">wazuh-alerts-*</option>
+            <option value="*">* (all)</option>
+          </select>
+          <button
+            onClick={() => doSearch()}
+            disabled={loading}
+            className={`px-2 py-1 text-xs font-semibold rounded transition-all whitespace-nowrap ${
+              loading ? 'bg-soc-stext/30 text-white cursor-not-allowed' : 'gbtn-primary'
+            }`}
+          >{loading ? '\u23F3' : '\u27F3'}</button>
+        </div>
       </div>
 
       <div className="flex items-center gap-1 flex-wrap">
