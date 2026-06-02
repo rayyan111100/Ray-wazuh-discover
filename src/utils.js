@@ -54,14 +54,14 @@ function escapeDql(v) {
 }
 
 function quoteVal(v) {
-  const s = String(v)
-  return /^\d+(\.\d+)?$/.test(s) ? s : `"${escapeDql(s)}"`
+  return `"${escapeDql(String(v))}"`
 }
 
-export function buildDqlText(filters) {
+export function buildDqlText(filters, matchMode = 'and') {
   if (!filters || !filters.length) return ''
   const parts = []
   for (const f of filters) {
+    if (f.disabled) continue
     const op = f.operator || (f.type === 'exists' ? 'exists' : f.negate ? 'is not' : 'is')
     const field = f.field
     const neg = f.negate ? 'NOT ' : ''
@@ -128,6 +128,27 @@ export function buildDqlText(filters) {
         if (v === '') continue
         parts.push(`${neg}${field}:*${escapeDql(v)}`)
         break
+      case 'matches regex': {
+        if (v === '') continue
+        const regex = v.startsWith('/') && v.endsWith('/') ? v.slice(1, -1) : v
+        parts.push(`${field}:/${escapeDql(regex)}/`)
+        break
+      }
+      case 'wildcard': {
+        if (v === '') continue
+        parts.push(`${neg}${field}:${escapeDql(v)}`)
+        break
+      }
+      case 'last N': {
+        if (!v || isNaN(parseInt(v))) continue
+        const unit = f.params?.unit || 'h'
+        const now = dayjs()
+        const from = now.subtract(parseInt(v), unit)
+        if (from.isValid()) {
+          parts.push(`${field}:[${from.toISOString()} TO ${now.toISOString()}]`)
+        }
+        break
+      }
       case 'is between':
         if (!f.secondValue && !f.params) continue
         {
@@ -151,7 +172,8 @@ export function buildDqlText(filters) {
         parts.push(`${field}:${quoteVal(v)}`)
     }
   }
-  return parts.join(' AND ')
+  const joiner = matchMode === 'or' ? ' OR ' : ' AND '
+  return parts.join(joiner)
 }
 
 function evalClientFilter(r, f) {
@@ -197,6 +219,28 @@ function evalClientFilter(r, f) {
       const m = parts.some(p => p.toLowerCase().endsWith(cv.toLowerCase()))
       return f.negate ? !m : m
     }
+    case 'matches regex': {
+      try {
+        const regex = new RegExp(cv)
+        return parts.some(p => regex.test(p))
+      } catch { return false }
+    }
+    case 'wildcard': {
+      const pattern = cv.replace(/\*/g, '.*').replace(/\?/g, '.')
+      try {
+        const re = new RegExp('^' + pattern + '$', 'i')
+        return parts.some(p => re.test(p))
+      } catch { return false }
+    }
+    case 'last N': {
+      if (!cv || isNaN(parseInt(cv))) return false
+      const unit = f.params?.unit || 'h'
+      const limit = dayjs().subtract(parseInt(cv), unit)
+      try {
+        const ts = dayjs(fv)
+        return ts.isValid() && ts.isAfter(limit)
+      } catch { return false }
+    }
     case 'is between': {
       const from = f.secondValue?.from || f.params?.from || ''
       const to = f.secondValue?.to || f.params?.to || ''
@@ -212,13 +256,17 @@ function evalClientFilter(r, f) {
   }
 }
 
-export function applyClientFilters(results, filters) {
+export function applyClientFilters(results, filters, matchMode = 'and') {
   if (!filters || !filters.length) return results
+  const active = filters.filter(f => !f.disabled)
+  if (!active.length) return results
   return results.filter(r => {
-    for (const f of filters) {
-      if (!evalClientFilter(r, f)) return false
+    for (const f of active) {
+      const matches = evalClientFilter(r, f)
+      if (matchMode === 'or' && matches) return true
+      if (matchMode === 'and' && !matches) return false
     }
-    return true
+    return matchMode !== 'or'
   })
 }
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { useApp } from '../context/AppContext'
+import { api } from '../api'
 import ResultsTable from '../components/ResultsTable'
 import FieldSidebar from '../components/FieldSidebar'
 import Histogram from '../components/Histogram'
@@ -8,7 +9,7 @@ import { getAllRules, getAllGroups } from '../services/ruleStorage'
 import { evaluateAllRules, interpolateMessage } from '../services/ruleEngine'
 
 export default function DiscoverTab() {
-  const { total, results, loading, dql, filters, isDark } = useApp()
+  const { total, results, loading, dql, filters, isDark, warning, setWarning, clearAllFilters, addFilter, doSearch, index, setIndex, startDate, endDate, tab } = useApp()
   const [applyRules, setApplyRules] = useState(false)
   const [ruleMatches, setRuleMatches] = useState({})
   const [matchedCount, setMatchedCount] = useState(0)
@@ -57,6 +58,35 @@ export default function DiscoverTab() {
     } catch {}
   }, [results, applyRules])
 
+  useEffect(() => {
+    const handleKeyDown = async (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'r' && tab === 'discover') {
+        e.preventDefault()
+        try {
+          const sd = typeof startDate === 'string' && startDate.startsWith('now') ? startDate : 'now-30d'
+          const ed = typeof endDate === 'string' && endDate === 'now' ? endDate : 'now'
+          const res = await api('aggregate', { index, field: 'rule.id', type: 'terms', limit: 10, start_date: sd, end_date: ed })
+          if (res.buckets?.length > 0) {
+            const idsList = res.buckets.map(b => `rule.id:${b.key} \u2192 ${b.count || b.doc_count} alerts`).join('\n')
+            const useRule = window.confirm(
+              `\u{1F4CA} Top 10 Rule IDs (${index}):\n\n${idsList}\n\nClick OK to use the most active rule ID as filter`
+            )
+            if (useRule && res.buckets[0]) {
+              addFilter(String(res.buckets[0].key), String(res.buckets[0].key), false, 'is')
+              doSearch()
+            }
+          } else {
+            window.alert('No rule.id data found in current index/date range')
+          }
+        } catch (e) {
+          console.error('Failed to fetch rule IDs:', e)
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [index, startDate, endDate, tab, addFilter, doSearch])
+
   const sevBadgeStyle = (sev) => ({
     critical: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 ring-1 ring-red-400/30',
     high: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 ring-1 ring-orange-400/30',
@@ -69,6 +99,32 @@ export default function DiscoverTab() {
     if (groupFilter.length === 0) return true
     return m.groupIds.some(gid => groupFilter.includes(gid))
   }).map(([idx]) => parseInt(idx))
+
+  const handleShowRuleIds = useCallback(async () => {
+    try {
+      const res = await api('aggregate', { index, field: 'rule.id', type: 'terms', limit: 15, start_date: 'now-1y', end_date: 'now' })
+      const ids = res.buckets?.map(b => `${b.key} (${b.count || b.doc_count} alerts)`).join('\n')
+      window.alert(`\u{1F4CA} Top 15 Rule IDs in ${index}:\n\n${ids || 'No rule.id data found'}`)
+    } catch {
+      window.alert('Failed to fetch rule IDs. Check API connection.')
+    }
+  }, [index])
+
+  const handleCheckStats = useCallback(async () => {
+    try {
+      const res = await api('count', { index, q: '*' })
+      const filterQ = filters.map(f => `${f.field}:${f.value}`).join(' AND ')
+      const withFilter = await api('count', { index, q: filterQ || '*' })
+      window.alert(
+        `\u{1F4CA} Index Statistics for ${index}:\n\n` +
+        `Total documents: ${(res.count || res.total || 0).toLocaleString()}\n` +
+        `Matching filter: ${(withFilter.count || withFilter.total || 0).toLocaleString()}\n\n` +
+        `${(withFilter.count || withFilter.total || 0) === 0 ? '\u26A0\uFE0F No documents match this filter in the current index.' : ''}`
+      )
+    } catch {
+      window.alert('Failed to get index statistics')
+    }
+  }, [index, filters])
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.12 }} className="space-y-2">
@@ -99,7 +155,17 @@ export default function DiscoverTab() {
           </button>
         </div>
       </div>
-      <Histogram />
+
+      {warning && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-3 flex items-start gap-2">
+          <span>{'\u2139\uFE0F'}</span>
+          <div className="flex-1 text-sm text-blue-700 dark:text-blue-300">{warning}</div>
+          <button onClick={() => setWarning(null)} className="text-blue-400 hover:text-blue-600 dark:hover:text-blue-200 font-bold">&times;</button>
+        </div>
+      )}
+
+      {total > 0 && <Histogram />}
+
       {applyRules && results.length > 0 && (
         <div className={`flex items-center gap-2 px-2 py-1.5 rounded text-xs flex-wrap ${isDark ? 'bg-purple-900/10 ring-1 ring-purple-800/30' : 'bg-purple-50 ring-1 ring-purple-200/50'}`}>
           <span className="font-semibold text-purple-700 dark:text-purple-300">{'\u2699'} Rules:</span>
@@ -164,20 +230,116 @@ export default function DiscoverTab() {
           )}
         </div>
       )}
-      <div className="flex gap-3 flex-col lg:flex-row">
-        <div className="flex-1 min-w-0">
-          <ResultsTable
-            ruleMatches={applyRules ? (groupFilter.length > 0
-              ? Object.fromEntries(Object.entries(ruleMatches).filter(([idx]) => filteredIds.includes(parseInt(idx))))
-              : ruleMatches
-            ) : null}
-            groupMap={groupMap}
-          />
+
+      {total === 0 && !loading ? (
+        <div className="p-8">
+          {filters.length > 0 || dql ? (
+            <div className="max-w-2xl mx-auto">
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-6 mb-4">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">{'\uD83D\uDD0D'}</span>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-amber-800 dark:text-amber-200 mb-2">
+                      No results for current filters
+                    </h3>
+                    <p className="text-sm text-amber-700 dark:text-amber-300 mb-4">
+                      The filter <code className="bg-amber-100 dark:bg-amber-800 px-1.5 py-0.5 rounded text-xs font-mono">
+                        {filters.map(f => `${f.field}:${f.value}`).join(', ') || dql}
+                      </code> returned 0 results. Try these quick fixes:
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <button onClick={handleShowRuleIds}
+                        className="flex items-center gap-2 p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg hover:border-blue-400 transition-colors text-sm">
+                        <span>{'\uD83C\uDFF7\uFE0F'}</span>
+                        <span className="text-left">
+                          <strong>Show available rule IDs</strong>
+                          <br />
+                          <small className="text-gray-500">See which rule IDs exist in current index</small>
+                        </span>
+                      </button>
+
+                      <button onClick={() => { clearAllFilters(); doSearch() }}
+                        className="flex items-center gap-2 p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg hover:border-blue-400 transition-colors text-sm">
+                        <span>{'\uD83D\uDD04'}</span>
+                        <span className="text-left">
+                          <strong>Clear filters &amp; show all</strong>
+                          <br />
+                          <small className="text-gray-500">Remove all filters and browse all data</small>
+                        </span>
+                      </button>
+
+                      {index.includes('4.x') && (
+                        <button onClick={() => { setIndex('wazuh-alerts-*'); setTimeout(() => doSearch(), 100) }}
+                          className="flex items-center gap-2 p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg hover:border-blue-400 transition-colors text-sm">
+                          <span>{'\uD83D\uDCC2'}</span>
+                          <span className="text-left">
+                            <strong>Try wazuh-alerts-*</strong>
+                            <br />
+                            <small className="text-gray-500">Search across all alert indices</small>
+                          </span>
+                        </button>
+                      )}
+
+                      <button onClick={handleCheckStats}
+                        className="flex items-center gap-2 p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg hover:border-blue-400 transition-colors text-sm">
+                        <span>{'\uD83D\uDCCA'}</span>
+                        <span className="text-left">
+                          <strong>Check index statistics</strong>
+                          <br />
+                          <small className="text-gray-500">Compare total vs filtered document counts</small>
+                        </span>
+                      </button>
+
+                      <button onClick={() => { setIndex('*'); setTimeout(() => doSearch(), 100) }}
+                        className="flex items-center gap-2 p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg hover:border-blue-400 transition-colors text-sm">
+                        <span>{'\uD83C\uDF10'}</span>
+                        <span className="text-left">
+                          <strong>Try all indices (*)</strong>
+                          <br />
+                          <small className="text-gray-500">Search across all available indices</small>
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-3 text-sm text-blue-700 dark:text-blue-300">
+                <strong>{'\uD83D\uDCA1'} Pro tip:</strong> Press <kbd className="bg-white dark:bg-gray-700 px-1.5 py-0.5 rounded text-xs border">Ctrl</kbd> + <kbd className="bg-white dark:bg-gray-700 px-1.5 py-0.5 rounded text-xs border">R</kbd> to quickly see top 10 rule IDs in current view
+              </div>
+            </div>
+          ) : (
+            <div className="text-center text-gray-500 dark:text-gray-400 py-12">
+              <span className="text-4xl block mb-3">{'\uD83D\uDCED'}</span>
+              <h3 className="text-lg font-medium mb-2">No data found</h3>
+              <p className="text-sm mb-4">
+                No alerts in <code className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-xs">{index}</code>
+                <br />for the selected time range
+              </p>
+              <div className="flex gap-2 justify-center">
+                <button onClick={() => { setIndex('wazuh-alerts-*'); setTimeout(() => doSearch(), 100) }} className="gbtn gbtn-ghost text-sm">Try wazuh-alerts-*</button>
+                <button onClick={() => { setIndex('*'); setTimeout(() => doSearch(), 100) }} className="gbtn gbtn-ghost text-sm">Try all indices</button>
+              </div>
+            </div>
+          )}
         </div>
-        <div className="w-full lg:w-60 shrink-0">
-          <FieldSidebar />
+      ) : (
+        <div className="flex gap-3 flex-col lg:flex-row">
+          <div className="flex-1 min-w-0">
+            <ResultsTable
+              ruleMatches={applyRules ? (groupFilter.length > 0
+                ? Object.fromEntries(Object.entries(ruleMatches).filter(([idx]) => filteredIds.includes(parseInt(idx))))
+                : ruleMatches
+              ) : null}
+              groupMap={groupMap}
+            />
+          </div>
+          <div className="w-full lg:w-60 shrink-0">
+            <FieldSidebar />
+          </div>
         </div>
-      </div>
+      )}
     </motion.div>
   )
 }

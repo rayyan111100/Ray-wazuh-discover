@@ -36,6 +36,17 @@ export function AppProvider({ children }) {
   const [activeGroup, setActiveGroup] = useState(null)
   const [selectedRules, setSelectedRules] = useState([])
   const [groupFilter, setGroupFilter] = useState([])
+  const [filterMatch, setFilterMatch] = useState('and')
+  const [warning, setWarning] = useState(null)
+  const dedupFilters = (arr) => {
+    const seen = new Set()
+    return arr.filter(f => {
+      const key = `${f.field}|${f.value}|${f.operator}|${!!f.negate}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  }
   const refreshRef = useRef(null)
   const filtersRef = useRef(filters)
   useEffect(() => { filtersRef.current = filters }, [filters])
@@ -67,16 +78,38 @@ export function AppProvider({ children }) {
   const updateStartDate = useCallback(val => { startDateRef.current = val; setStartDate(val) }, [])
   const updateEndDate = useCallback(val => { endDateRef.current = val; setEndDate(val) }, [])
 
+  const clearAllFilters = useCallback(() => {
+    const pinned = filtersRef.current.filter(f => f.pinned)
+    setFiltersSafe(pinned)
+    if (!pinned.length) setDql('')
+  }, [])
+
   const doSearch = useCallback(async (opts = {}) => {
     setLoading(true)
     setError(null)
+    setWarning(null)
     try {
       const currentFilters = opts.filters !== undefined ? opts.filters : filtersRef.current
+      const matchMode = opts.filterMatch || filterMatch
       const userQ = opts.q !== undefined ? opts.q : dql
-      const filterQ = buildDqlText(currentFilters)
+
+      // Build FULL filter DQL (all filters, for client-side)
+      const fullFilterQ = buildDqlText(currentFilters, matchMode)
+
+      // Build SERVER filter DQL (exclude operators the Wazuh API search endpoint ignores)
+      // Known issues: NOT, is not, range operators on nested fields, regex, wildcard
+      const serverSafe = currentFilters.filter(f =>
+        !f.disabled &&
+        !f.negate &&
+        !['is not', 'does not contain', 'is not one of', 'is not between', 'does not exist', 'matches regex', 'wildcard'].includes(f.operator)
+      )
+      const serverFilterQ = buildDqlText(serverSafe, matchMode)
+
+      // Combine user DQL with server-safe filter DQL
       let combined = ''
-      if (userQ && filterQ) combined = '(' + userQ + ') AND ' + filterQ
-      else combined = userQ || filterQ
+      if (userQ && serverFilterQ) combined = '(' + userQ + ') ' + (matchMode === 'or' ? 'OR' : 'AND') + ' ' + serverFilterQ
+      else combined = userQ || serverFilterQ
+
       const params = {
         limit: opts.limit || limit,
         index: opts.index || index,
@@ -87,11 +120,43 @@ export function AppProvider({ children }) {
         end_date: opts.endDate || resolveTimeRange().end_date
       }
       if (!params.q) delete params.q
-      const d = await api('search', params)
-      const totalRes = d.total || 0
+
+      const [d, c] = await Promise.all([
+        api('search', params),
+        api('count', { index: params.index, q: params.q || '*', start_date: params.start_date, end_date: params.end_date }).catch(() => null)
+      ])
+      let totalRes = c?.count ?? d.total ?? 0
       let res = d.results || []
-      res = applyClientFilters(res, currentFilters)
-      setTotal(totalRes)
+
+      // Auto-fallback: if 0 results in 4.x index, try broader index
+      if ((totalRes === 0 || totalRes === 10000) && params.index && params.index.includes('4.x') && !opts.index) {
+        const fallbackParams = { ...params, index: 'wazuh-alerts-*' }
+        try {
+          const [fd, fc] = await Promise.all([
+            api('search', fallbackParams),
+            api('count', { index: 'wazuh-alerts-*', q: params.q || '*', start_date: params.start_date, end_date: params.end_date }).catch(() => null)
+          ])
+          if (fd.total > 0) {
+            setIndex('wazuh-alerts-*')
+            setWarning(`Switched to wazuh-alerts-* (found ${fc?.count || fd.total} results). No data in ${params.index}.`)
+            totalRes = fc?.count ?? fd.total ?? 0
+            res = fd.results || []
+          }
+        } catch {}
+      }
+
+      // Apply ALL filters client-side (handles NOT, ranges, regex, etc. that server ignores)
+      res = applyClientFilters(res, currentFilters, matchMode)
+
+      if (res.length === 0 && totalRes > 0) {
+        setWarning('Server returned results that did not match your filter (API limitation). Results refined client-side.')
+      }
+      if (fullFilterQ && !serverFilterQ && totalRes > 0 && res.length < totalRes) {
+        setWarning(`Showing ${res.length} of ${totalRes} results (client-filtered). Remove restrictive filters to see more.`)
+      }
+
+      const hasClientOnlyFilters = serverSafe.length < currentFilters.filter(f => !f.disabled).length
+      setTotal(hasClientOnlyFilters ? res.length : totalRes)
       setResults(res)
       if (opts.noHistogram !== true) loadHistogram(params)
     } catch (e) {
@@ -101,7 +166,13 @@ export function AppProvider({ children }) {
     } finally {
       setLoading(false)
     }
-  }, [dql, limit, index, sortField, sortOrder, resolveTimeRange])
+  }, [dql, limit, index, sortField, sortOrder, resolveTimeRange, filterMatch])
+
+  const setFiltersSafe = useCallback((arr) => {
+    const clean = dedupFilters(arr)
+    filtersRef.current = clean
+    setFilters(clean)
+  }, [])
 
   const addFilter = useCallback((field, value, negate, operator, params) => {
     const isExists = value === '__exists__'
@@ -109,22 +180,25 @@ export function AppProvider({ children }) {
     const ft = isExists ? 'exists' : 'value'
     const op = operator || (isExists ? 'exists' : negate ? 'is not' : 'is')
     if (ft === 'exists') negate = false
-    const newFilter = { id: genId(), field, value: fv, negate: !!negate, type: ft, operator: op, params: params || null, secondValue: null }
-    const dup = filtersRef.current.find(f => f.field === field && f.value === fv && (f.operator || 'is') === op)
-    if (!dup) {
-      filtersRef.current = [...filtersRef.current, newFilter]
-      setFilters(filtersRef.current)
+    const existing = filtersRef.current.find(f => f.field === field)
+    if (existing) {
+      const updated = { ...existing, value: fv, negate: !!negate, type: ft, operator: op, params: params || null, secondValue: null, disabled: false }
+      filtersRef.current = filtersRef.current.map(f => f.id === existing.id ? updated : f)
+      setFiltersSafe(filtersRef.current)
+    } else {
+      const newFilter = { id: genId(), field, value: fv, negate: !!negate, type: ft, operator: op, params: params || null, secondValue: null, disabled: false, pinned: false }
+      setFiltersSafe([...filtersRef.current, newFilter])
     }
   }, [])
 
   const editFilter = useCallback((id, updates) => {
     filtersRef.current = filtersRef.current.map(f => f.id === id ? { ...f, ...updates } : f)
-    setFilters(filtersRef.current)
+    setFiltersSafe(filtersRef.current)
   }, [])
 
   const removeFilter = useCallback(id => {
     filtersRef.current = filtersRef.current.filter(f => f.id !== id)
-    setFilters(filtersRef.current)
+    setFiltersSafe(filtersRef.current)
   }, [])
 
   const loadHistogram = useCallback(async (params) => {
@@ -188,9 +262,9 @@ export function AppProvider({ children }) {
     if (refreshRef.current) { clearInterval(refreshRef.current); refreshRef.current = null }
     if (!refreshActive || refreshValue <= 0) return
     const ms = refreshUnit === 'h' ? refreshValue * 3600000 : refreshUnit === 'm' ? refreshValue * 60000 : refreshValue * 1000
-    refreshRef.current = setInterval(() => doSearchRef.current({ noHistogram: false }), ms)
+    refreshRef.current = setInterval(() => doSearchRef.current({ noHistogram: false, filterMatch: filterMatch }), ms)
     return () => { if (refreshRef.current) clearInterval(refreshRef.current) }
-  }, [refreshActive, refreshValue, refreshUnit])
+  }, [refreshActive, refreshValue, refreshUnit, filterMatch])
 
   const toggleRefresh = useCallback(() => {
     if (refreshActive) { setRefreshActive(false); if (refreshRef.current) { clearInterval(refreshRef.current); refreshRef.current = null } }
@@ -262,6 +336,8 @@ export function AppProvider({ children }) {
     activeGroup, setActiveGroup,
     selectedRules, setSelectedRules,
     groupFilter, setGroupFilter,
+    filterMatch, setFilterMatch,
+    warning, setWarning, clearAllFilters,
     selectRule, deselectRule,
     selectAllRules, deselectAllRules,
     bulkAddToGroup, bulkMoveToGroup, bulkRemoveFromGroup,

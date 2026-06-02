@@ -3,12 +3,17 @@ import { motion } from 'framer-motion'
 import { useApp } from '../context/AppContext'
 import { api } from '../api'
 
+const SUGGESTION_CACHE = new Map()
+const CACHE_TTL = 120000
+
 const OPERATORS_BY_TYPE = {
   string: [
     { value: 'is', label: 'is' }, { value: 'is not', label: 'is not' },
     { value: 'is one of', label: 'is one of' }, { value: 'is not one of', label: 'is not one of' },
-    { value: 'contains', label: 'contains' }, { value: 'does not contain', label: 'does not contain' },
+    { value: 'contains', label: 'contains (\u007E)' }, { value: 'does not contain', label: 'does not contain' },
     { value: 'starts with', label: 'starts with' }, { value: 'ends with', label: 'ends with' },
+    { value: 'matches regex', label: 'matches regex (/pattern/)' },
+    { value: 'wildcard', label: 'wildcard (*?)' },
     { value: 'exists', label: 'exists' }, { value: 'does not exist', label: 'does not exist' }
   ],
   number: [
@@ -27,13 +32,15 @@ const OPERATORS_BY_TYPE = {
     { value: 'is before', label: 'is before', actual: 'is less than' },
     { value: 'is before or equal', label: 'is before or equal', actual: 'is less than or equal' },
     { value: 'is between', label: 'is between' }, { value: 'is not between', label: 'is not between' },
+    { value: 'last N', label: 'last N minutes/hours/days' },
     { value: 'exists', label: 'exists' }, { value: 'does not exist', label: 'does not exist' }
   ],
   ip: [
     { value: 'is', label: 'is' }, { value: 'is not', label: 'is not' },
     { value: 'is one of', label: 'is one of' }, { value: 'is not one of', label: 'is not one of' },
-    { value: 'contains', label: 'contains' }, { value: 'does not contain', label: 'does not contain' },
+    { value: 'contains', label: 'contains (\u007E)' }, { value: 'does not contain', label: 'does not contain' },
     { value: 'starts with', label: 'starts with' }, { value: 'ends with', label: 'ends with' },
+    { value: 'matches regex', label: 'matches regex (/pattern/)' },
     { value: 'exists', label: 'exists' }, { value: 'does not exist', label: 'does not exist' }
   ],
   boolean: [
@@ -178,6 +185,7 @@ export default function FilterEditor({ filter = null, onClose, onSave }) {
   const [operator, setOperator] = useState(initOp)
   const [value, setValue] = useState(filter?.value && filter.value !== '_exists_' ? filter.value : filter?.params?.from || '')
   const [secondValue, setSecondValue] = useState(filter?.secondValue || filter?.params?.to || '')
+  const [lastNUnit, setLastNUnit] = useState(filter?.params?.unit || 'h')
   const [negate, setNegate] = useState(filter?.negate || false)
   const [customLabel, setCustomLabel] = useState('')
   const [showCustomLabel, setShowCustomLabel] = useState(false)
@@ -196,11 +204,23 @@ export default function FilterEditor({ filter = null, onClose, onSave }) {
   useEffect(() => { loadFields() }, [])
 
   useEffect(() => {
-    if (!field || isExistsOp || isRangeOp || isListOp) { setSuggestions([]); return }
+    if (!field || isExistsOp || isRangeOp || isListOp || isLastNOp) { setSuggestions([]); return }
     let cancelled = false
+    const cacheKey = `suggest_${field}`
+    const cached = SUGGESTION_CACHE.get(cacheKey)
+    if (cached && Date.now() - cached.ts < CACHE_TTL) {
+      setSuggestions(cached.data)
+      return
+    }
     setLoadingValues(true)
     api('aggregate', { field, index: 'wazuh-alerts-4.x-*', type: 'terms', limit: 20 })
-      .then(d => { if (!cancelled) setSuggestions(d.buckets || []) })
+      .then(d => {
+        const buckets = d.buckets || []
+        if (!cancelled) {
+          SUGGESTION_CACHE.set(cacheKey, { data: buckets, ts: Date.now() })
+          setSuggestions(buckets)
+        }
+      })
       .catch(() => { if (!cancelled) setSuggestions([]) })
       .finally(() => { if (!cancelled) setLoadingValues(false) })
     return () => { cancelled = true }
@@ -240,8 +260,11 @@ export default function FilterEditor({ filter = null, onClose, onSave }) {
   const isRangeOp = operator === 'is between' || operator === 'is not between'
   const isListOp = operator === 'is one of' || operator === 'is not one of'
   const isExistsOp = operator === 'exists' || operator === 'does not exist'
+  const isLastNOp = operator === 'last N'
+  const isRegexOp = operator === 'matches regex'
+  const isWildcardOp = operator === 'wildcard'
   const alreadyNegated = ['is not', 'does not contain', 'is not one of', 'is not between'].includes(operator)
-  const isNegatable = !isExistsOp && !alreadyNegated
+  const isNegatable = !isExistsOp && !alreadyNegated && !isLastNOp
 
   const filteredFields = useMemo(() => {
     if (!fieldSearch) return fields.slice(0, 100)
@@ -251,8 +274,11 @@ export default function FilterEditor({ filter = null, onClose, onSave }) {
 
   const doSave = () => {
     if (!field) return
-    if (!isExistsOp && !isRangeOp && !value) return
+    if (!isExistsOp && !isRangeOp && !isLastNOp && !value) return
     if (isRangeOp && (!value || !secondValue)) return
+    if (isLastNOp && (!value || isNaN(parseInt(value)))) return
+
+    const saveParams = isRangeOp ? { from: value, to: secondValue } : isLastNOp ? { unit: lastNUnit } : null
 
     if (isEdit && filter) {
       onSave?.({
@@ -263,13 +289,14 @@ export default function FilterEditor({ filter = null, onClose, onSave }) {
         operator,
         type: isExistsOp ? 'exists' : 'value',
         negate: isNegatable ? negate : false,
+        disabled: filter.disabled || false,
+        params: saveParams,
         customLabel: showCustomLabel ? customLabel || null : null
       })
     } else {
       const actualNegate = isNegatable ? negate : false
       if (isExistsOp) addFilter(field, value || '__exists__', false, operator)
-      else if (isRangeOp) addFilter(field, value, actualNegate, operator, { from: value, to: secondValue })
-      else addFilter(field, value, actualNegate, operator)
+      else addFilter(field, value, actualNegate, operator, saveParams)
       doSearch()
     }
     onClose?.()
@@ -382,41 +409,72 @@ export default function FilterEditor({ filter = null, onClose, onSave }) {
 
         {field && (
           <div data-test-subj="filterParams">
-            {!isExistsOp && !isRangeOp && !isListOp && (
+            {!isExistsOp && !isRangeOp && !isListOp && !isLastNOp && (
               <div>
-                <label className="block text-[10px] text-[#5f6368] dark:text-[#9aa0a6] mb-0.5 font-medium">Value</label>
+                <label className="block text-[10px] text-[#5f6368] dark:text-[#9aa0a6] mb-0.5 font-medium">
+                  {isRegexOp ? 'Regex pattern' : isWildcardOp ? 'Wildcard pattern' : 'Value'}
+                </label>
                 <div className="relative" ref={valueRootRef}>
                   <div className="relative">
-                    <input
-                      type="text"
-                      value={value}
-                      onChange={e => { setValue(e.target.value); setValueOpen(true); setValueActiveIdx(-1) }}
-                      onFocus={() => setValueOpen(true)}
-                      placeholder={fieldType === 'boolean' ? 'true / false' : 'Enter value...'}
-                      className="ginput w-full px-2 py-1.5 text-xs pr-7"
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                          if (valueOpen && filteredSuggestions[valueActiveIdx]) {
-                            setValue(String(filteredSuggestions[valueActiveIdx].key))
-                            setValueOpen(false)
-                          } else {
-                            doSave()
+                    {isRegexOp ? (
+                      <div className="flex items-center ginput">
+                        <span className="text-[#9ca3af] text-xs px-1.5">/</span>
+                        <input
+                          type="text"
+                          value={value}
+                          onChange={e => setValue(e.target.value)}
+                          placeholder="pattern"
+                          className="flex-1 bg-transparent outline-none border-none text-xs py-1.5 text-[#202124] dark:text-[#e8eaed]"
+                          onKeyDown={e => e.key === 'Enter' && doSave()}
+                          autoFocus
+                        />
+                        <span className="text-[#9ca3af] text-xs px-1.5">/</span>
+                      </div>
+                    ) : isWildcardOp ? (
+                      <div>
+                        <input
+                          type="text"
+                          value={value}
+                          onChange={e => setValue(e.target.value)}
+                          placeholder="Use * for multiple chars, ? for single char"
+                          className="ginput w-full px-2 py-1.5 text-xs"
+                          onKeyDown={e => e.key === 'Enter' && doSave()}
+                          autoFocus
+                        />
+                        <div className="text-[9px] text-[#9ca3af] mt-0.5 px-1">Tip: <code className="bg-gray-100 dark:bg-gray-700 px-0.5 rounded">*</code> matches any, <code className="bg-gray-100 dark:bg-gray-700 px-0.5 rounded">?</code> matches one character</div>
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        value={value}
+                        onChange={e => { setValue(e.target.value); setValueOpen(true); setValueActiveIdx(-1) }}
+                        onFocus={() => setValueOpen(true)}
+                        placeholder={fieldType === 'boolean' ? 'true / false' : 'Enter value...'}
+                        className="ginput w-full px-2 py-1.5 text-xs pr-7"
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            if (valueOpen && filteredSuggestions[valueActiveIdx]) {
+                              setValue(String(filteredSuggestions[valueActiveIdx].key))
+                              setValueOpen(false)
+                            } else {
+                              doSave()
+                            }
                           }
-                        }
-                        if (e.key === 'ArrowDown') { e.preventDefault(); setValueActiveIdx(p => Math.min(p + 1, filteredSuggestions.length - 1)) }
-                        if (e.key === 'ArrowUp') { e.preventDefault(); setValueActiveIdx(p => Math.max(p - 1, 0)) }
-                        if (e.key === 'Escape') setValueOpen(false)
-                      }}
-                      autoFocus
-                    />
-                    {loadingValues && (
+                          if (e.key === 'ArrowDown') { e.preventDefault(); setValueActiveIdx(p => Math.min(p + 1, filteredSuggestions.length - 1)) }
+                          if (e.key === 'ArrowUp') { e.preventDefault(); setValueActiveIdx(p => Math.max(p - 1, 0)) }
+                          if (e.key === 'Escape') setValueOpen(false)
+                        }}
+                        autoFocus
+                      />
+                    )}
+                    {loadingValues && !isRegexOp && !isWildcardOp && (
                       <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[#9ca3af] animate-spin" viewBox="0 0 16 16" fill="currentColor">
                         <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 12.5A5.5 5.5 0 1 1 8 2.5a5.5 5.5 0 0 1 0 11Z" opacity="0.3"/>
                         <path d="M15 8a7 7 0 0 0-7-7v2a5 5 0 0 1 5 5h2Z"/>
                       </svg>
                     )}
                   </div>
-                  {valueOpen && filteredSuggestions.length > 0 && (
+                  {!isRegexOp && !isWildcardOp && valueOpen && filteredSuggestions.length > 0 && (
                     <div className="absolute top-full left-0 right-0 mt-0.5 max-h-48 overflow-y-auto bg-white dark:bg-[#1a1d27] border border-[#e5e7eb] dark:border-[#2d3140] rounded shadow-lg z-20">
                       {filteredSuggestions.map((s, i) => (
                         <button
@@ -429,7 +487,7 @@ export default function FilterEditor({ filter = null, onClose, onSave }) {
                           }`}
                         >
                           <span className="truncate">{String(s.key)}</span>
-                          <span className="text-[9px] text-[#9ca3af] ml-2 shrink-0">{s.count}</span>
+                          <span className="text-[9px] text-[#9ca3af] ml-2 shrink-0">{s.count || s.doc_count || ''}</span>
                         </button>
                       ))}
                     </div>
@@ -461,6 +519,26 @@ export default function FilterEditor({ filter = null, onClose, onSave }) {
                 <div className="flex-1">
                   <label className="block text-[10px] text-[#5f6368] dark:text-[#9aa0a6] mb-0.5 font-medium">To</label>
                   <input type="text" value={secondValue} onChange={e => setSecondValue(e.target.value)} placeholder="Max" className="ginput w-full px-2 py-1.5 text-xs" onKeyDown={e => e.key === 'Enter' && doSave()} />
+                </div>
+              </div>
+            )}
+
+            {isLastNOp && (
+              <div className="flex gap-2 items-end">
+                <div className="flex-1">
+                  <label className="block text-[10px] text-[#5f6368] dark:text-[#9aa0a6] mb-0.5 font-medium">Last</label>
+                  <input type="number" min="1" value={value} onChange={e => setValue(e.target.value)} placeholder="15" className="ginput w-full px-2 py-1.5 text-xs" />
+                </div>
+                <div className="flex-none">
+                  <label className="block text-[10px] text-[#5f6368] dark:text-[#9aa0a6] mb-0.5 font-medium">Unit</label>
+                  <select value={lastNUnit} onChange={e => { setLastNUnit(e.target.value); setValue(value || '1') }}
+                    className="ginput px-2 py-1.5 text-xs">
+                    <option value="m">minutes</option>
+                    <option value="h">hours</option>
+                    <option value="d">days</option>
+                    <option value="w">weeks</option>
+                    <option value="M">months</option>
+                  </select>
                 </div>
               </div>
             )}
@@ -517,7 +595,7 @@ export default function FilterEditor({ filter = null, onClose, onSave }) {
             className="px-3 py-1 text-xs font-medium rounded text-[#1a73e8] dark:text-[#8ab4f8] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] transition-colors"
           >Cancel</button>
           <button onClick={doSave}
-            disabled={!field || (!isExistsOp && !isRangeOp && !value) || (isRangeOp && (!value || !secondValue))}
+            disabled={!field || (!isExistsOp && !isRangeOp && !isLastNOp && !value) || (isRangeOp && (!value || !secondValue)) || (isLastNOp && (!value || isNaN(parseInt(value))))}
             className="px-3 py-1 text-xs font-semibold rounded bg-[#3b82f6] text-white hover:bg-[#2563eb] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >{isEdit ? 'Save' : 'Add'}</button>
         </div>

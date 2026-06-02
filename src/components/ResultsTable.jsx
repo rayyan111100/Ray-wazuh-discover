@@ -196,7 +196,8 @@ function RuleBadge({ severity, name, groupNames, groupColors }) {
 }
 
 export default function ResultsTable({ ruleMatches = null, groupMap = null, results: propResults = null, total: propTotal = null, loading: propLoading = null, error: propError = null }) {
-  const { results: ctxResults, total: ctxTotal, columns, toggleColumn, moveColumn, doSort, sortField, sortOrder, loading: ctxLoading, error: ctxError, isDark, fields, loadFields } = useApp()
+  const { results: ctxResults, total: ctxTotal, columns, toggleColumn, moveColumn, doSort, sortField, sortOrder, loading: ctxLoading, error: ctxError, isDark, fields, loadFields, filters, index: ctxIndex } = useApp()
+  const index = ctxIndex
   const results = propResults ?? ctxResults
   const total = propTotal ?? ctxTotal
   const loading = propLoading ?? ctxLoading
@@ -214,7 +215,20 @@ export default function ResultsTable({ ruleMatches = null, groupMap = null, resu
 
   if (error) return <div className="p-3 text-xs text-red-500 bg-red-50 dark:bg-red-900/20 rounded border border-red-200 dark:border-red-800">{'\u274C'} {error}</div>
   if (loading && !results.length) return <div className="p-4 text-xs text-center text-soc-stext dark:text-soc-darkstext">{'\u23F3'} Searching...</div>
-  if (!results.length) return <div className="p-4 text-xs text-center text-soc-stext dark:text-soc-darkstext">{'\u2705'} No results</div>
+  if (!results.length) return (
+    <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+      <span className="text-4xl block mb-3">{filters && filters.length > 0 ? '\uD83D\uDD0D' : '\uD83D\uDCED'}</span>
+      <h3 className="text-lg font-medium mb-2">
+        {filters && filters.length > 0 ? 'No results match your filters' : 'No data available'}
+      </h3>
+      <p className="text-sm">
+        {filters && filters.length > 0
+          ? 'Try adjusting your filters, date range, or index pattern from the search bar above'
+          : `No documents found in ${index || 'current index'} for the selected time period`
+        }
+      </p>
+    </div>
+  )
 
   return (
     <div>
@@ -309,7 +323,7 @@ export default function ResultsTable({ ruleMatches = null, groupMap = null, resu
                       } else if (c === '@timestamp' || c === 'timestamp') disp = <span className="text-soc-stext dark:text-soc-darkstext text-xxs">{raw.slice(0, 19)}</span>
                       else { let x = raw; if (x.length > 100) x = x.slice(0, 100) + '\u2026'; disp = x || '\u2014' }
                       return (
-                        <td key={c} className="px-1.5 py-1 relative max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">
+                        <td key={c} className={`px-1.5 py-1 relative overflow-hidden text-ellipsis whitespace-nowrap ${c === 'rule.description' || c === 'full_log' ? 'min-w-[100px] max-w-[400px]' : c === '@timestamp' || c === 'timestamp' ? 'min-w-[130px] max-w-[160px]' : 'min-w-[70px] max-w-[180px]'}`}>
                           <span className="cell-val-wrap relative">
                             {disp}
                             <FilterBtns field={c} value={v} />
