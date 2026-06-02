@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { useApp } from '../context/AppContext'
+import { api } from '../api'
 
 const OPERATORS_BY_TYPE = {
   string: [
@@ -183,10 +184,41 @@ export default function FilterEditor({ filter = null, onClose, onSave }) {
   const [fieldSearch, setFieldSearch] = useState('')
   const [showFieldDropdown, setShowFieldDropdown] = useState(false)
 
+  const [suggestions, setSuggestions] = useState([])
+  const [valueOpen, setValueOpen] = useState(false)
+  const [valueActiveIdx, setValueActiveIdx] = useState(-1)
+  const [loadingValues, setLoadingValues] = useState(false)
+  const valueRootRef = useRef(null)
+
   const fieldRef = useRef(null)
   const rootRef = useRef(null)
 
   useEffect(() => { loadFields() }, [])
+
+  useEffect(() => {
+    if (!field || isExistsOp || isRangeOp || isListOp) { setSuggestions([]); return }
+    let cancelled = false
+    setLoadingValues(true)
+    api('aggregate', { field, index: 'wazuh-alerts-4.x-*', type: 'terms', limit: 20 })
+      .then(d => { if (!cancelled) setSuggestions(d.buckets || []) })
+      .catch(() => { if (!cancelled) setSuggestions([]) })
+      .finally(() => { if (!cancelled) setLoadingValues(false) })
+    return () => { cancelled = true }
+  }, [field])
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (valueRootRef.current && !valueRootRef.current.contains(e.target)) setValueOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  const filteredSuggestions = useMemo(() => {
+    if (!value || !suggestions.length) return suggestions
+    const q = value.toLowerCase()
+    return suggestions.filter(s => String(s.key).toLowerCase().includes(q))
+  }, [suggestions, value])
 
   useEffect(() => {
     if (showFieldDropdown && fieldRef.current) fieldRef.current.focus()
@@ -353,15 +385,56 @@ export default function FilterEditor({ filter = null, onClose, onSave }) {
             {!isExistsOp && !isRangeOp && !isListOp && (
               <div>
                 <label className="block text-[10px] text-[#5f6368] dark:text-[#9aa0a6] mb-0.5 font-medium">Value</label>
-                <input
-                  type="text"
-                  value={value}
-                  onChange={e => setValue(e.target.value)}
-                  placeholder={fieldType === 'boolean' ? 'true / false' : 'Enter value...'}
-                  className="ginput w-full px-2 py-1.5 text-xs"
-                  onKeyDown={e => e.key === 'Enter' && doSave()}
-                  autoFocus
-                />
+                <div className="relative" ref={valueRootRef}>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={value}
+                      onChange={e => { setValue(e.target.value); setValueOpen(true); setValueActiveIdx(-1) }}
+                      onFocus={() => setValueOpen(true)}
+                      placeholder={fieldType === 'boolean' ? 'true / false' : 'Enter value...'}
+                      className="ginput w-full px-2 py-1.5 text-xs pr-7"
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          if (valueOpen && filteredSuggestions[valueActiveIdx]) {
+                            setValue(String(filteredSuggestions[valueActiveIdx].key))
+                            setValueOpen(false)
+                          } else {
+                            doSave()
+                          }
+                        }
+                        if (e.key === 'ArrowDown') { e.preventDefault(); setValueActiveIdx(p => Math.min(p + 1, filteredSuggestions.length - 1)) }
+                        if (e.key === 'ArrowUp') { e.preventDefault(); setValueActiveIdx(p => Math.max(p - 1, 0)) }
+                        if (e.key === 'Escape') setValueOpen(false)
+                      }}
+                      autoFocus
+                    />
+                    {loadingValues && (
+                      <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[#9ca3af] animate-spin" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 12.5A5.5 5.5 0 1 1 8 2.5a5.5 5.5 0 0 1 0 11Z" opacity="0.3"/>
+                        <path d="M15 8a7 7 0 0 0-7-7v2a5 5 0 0 1 5 5h2Z"/>
+                      </svg>
+                    )}
+                  </div>
+                  {valueOpen && filteredSuggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-0.5 max-h-48 overflow-y-auto bg-white dark:bg-[#1a1d27] border border-[#e5e7eb] dark:border-[#2d3140] rounded shadow-lg z-20">
+                      {filteredSuggestions.map((s, i) => (
+                        <button
+                          key={s.key}
+                          onClick={() => { setValue(String(s.key)); setValueOpen(false) }}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 text-xs transition-colors ${
+                            i === valueActiveIdx
+                              ? 'bg-[#e8f0fe] dark:bg-[#2d3140] text-[#1a73e8] dark:text-[#8ab4f8]'
+                              : 'text-[#202124] dark:text-[#e8eaed] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140]'
+                          }`}
+                        >
+                          <span className="truncate">{String(s.key)}</span>
+                          <span className="text-[9px] text-[#9ca3af] ml-2 shrink-0">{s.count}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
