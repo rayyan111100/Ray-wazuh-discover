@@ -1,5 +1,6 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react'
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { GDPR_FIELDS, GDPR_CATEGORIES, getGdprField } from '../data/gdprFields'
 
 const MAX_DEPTH = 3
 const OPERATORS = ['equals', 'contains', 'regex', 'startsWith', 'endsWith', 'gt', 'gte', 'lt', 'lte', 'inList', 'exists']
@@ -9,6 +10,7 @@ function FieldPicker({ value, onChange, fieldList }) {
   const [query, setQuery] = useState('')
   const [focusedOnce, setFocusedOnce] = useState(false)
   const [pos, setPos] = useState(null)
+  const [tab, setTab] = useState('fields')
   const inputRef = useRef(null)
   const ref = useRef(null)
 
@@ -30,17 +32,61 @@ function FieldPicker({ value, onChange, fieldList }) {
 
   return (
     <div className="flex-1 min-w-0 relative" ref={ref}>
-      <input ref={inputRef} className="w-full bg-transparent outline-none text-soc-stext dark:text-soc-darkstext py-1 text-[10px] sm:text-[11px]" placeholder="field"
-        value={focusedOnce ? query : value} onFocus={() => { openDropdown(); if (!focusedOnce) { setFocusedOnce(true); setQuery(value || '') } }}
-        onChange={e => { setQuery(e.target.value); onChange(e.target.value); openDropdown() }} />
+      <div className="flex items-center gap-1">
+        <input ref={inputRef} className="w-full bg-transparent outline-none text-soc-stext dark:text-soc-darkstext py-1 text-[10px] sm:text-[11px]" placeholder="field"
+          value={focusedOnce ? query : value} onFocus={() => { openDropdown(); if (!focusedOnce) { setFocusedOnce(true); setQuery(value || '') } }}
+          onChange={e => { setQuery(e.target.value); onChange(e.target.value); openDropdown() }} />
+        {getGdprField(value) && (
+          <span className="shrink-0 text-[9px] px-1 py-0.5 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium whitespace-nowrap"
+            title={getGdprField(value).gdprArticle}>
+            {getGdprField(value).icon} GDPR
+          </span>
+        )}
+      </div>
       {open && pos && (
-        <div style={{ position: 'fixed', top: pos.top, left: pos.left, width: Math.max(pos.width, 200) }}
-          className="bg-white dark:bg-[#1a1d27] border border-[#e5e7eb] dark:border-[#2d3140] rounded-lg shadow-lg z-50 max-h-40 overflow-y-auto">
-          {filtered.map(f => (
-            <button key={f} type="button" className="w-full text-left px-3 py-1.5 text-[10px] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] text-soc-stext dark:text-soc-darkstext truncate transition-colors"
-              onMouseDown={() => { setQuery(''); setFocusedOnce(false); onChange(f); setOpen(false) }}>{f}</button>
-          ))}
-          {filtered.length === 0 && <div className="px-3 py-2 text-[9px] text-[#9ca3af] italic">Custom: {query}</div>}
+        <div style={{ position: 'fixed', top: pos.top, left: pos.left, width: Math.max(pos.width, 320) }}
+          className="bg-white dark:bg-[#1a1d27] border border-[#e5e7eb] dark:border-[#2d3140] rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
+          <div className="flex border-b border-[#e5e7eb] dark:border-[#2d3140] sticky top-0 bg-white dark:bg-[#1a1d27] z-10">
+            <button onClick={() => setTab('fields')}
+              className={`flex-1 text-[10px] py-1.5 font-medium transition-colors ${tab === 'fields' ? 'text-[#3b82f6] border-b-2 border-[#3b82f6]' : 'text-[#9ca3af] hover:text-[#6b7280]'}`}>
+              Wazuh Fields
+            </button>
+            <button onClick={() => { setTab('gdpr'); setQuery('') }}
+              className={`flex-1 text-[10px] py-1.5 font-medium transition-colors ${tab === 'gdpr' ? 'text-[#3b82f6] border-b-2 border-[#3b82f6]' : 'text-[#9ca3af] hover:text-[#6b7280]'}`}>
+              GDPR Quick-Fill
+            </button>
+          </div>
+          {tab === 'fields' ? (
+            <div>
+              {filtered.map(f => (
+                <button key={f} type="button" className="w-full text-left px-3 py-1.5 text-[10px] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] text-soc-stext dark:text-soc-darkstext truncate transition-colors"
+                  onMouseDown={() => { setQuery(''); setFocusedOnce(false); onChange(f); setOpen(false) }}>{f}</button>
+              ))}
+              {filtered.length === 0 && <div className="px-3 py-2 text-[9px] text-[#9ca3af] italic">Custom: {query}</div>}
+            </div>
+          ) : (
+            <div className="divide-y divide-[#f3f4f6] dark:divide-[#2d3140]">
+              {GDPR_CATEGORIES.map(cat => {
+                const catFields = GDPR_FIELDS.filter(f => f.category === cat)
+                return (
+                  <div key={cat} className="px-2 py-1.5">
+                    <div className="text-[9px] font-semibold text-[#6b7280] dark:text-[#9ca3af] uppercase tracking-wider mb-1 px-1">{cat}</div>
+                    <div className="space-y-0.5">
+                      {catFields.map(gf => (
+                        <button key={gf.field} type="button"
+                          onMouseDown={() => { onChange(gf.field); setOpen(false) }}
+                          className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-[10px] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] text-left transition-colors">
+                          <span className="text-xs shrink-0">{gf.icon}</span>
+                          <span className="flex-1 truncate text-soc-stext dark:text-soc-darkstext font-medium">{gf.field}</span>
+                          <span className="text-[8px] text-[#9ca3af] whitespace-nowrap">{gf.gdprArticle}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -271,7 +317,6 @@ export default function ConditionGroupEditor({ conditions = [], logic = 'AND', d
             )
           }
 
-          // Group item
           const grp = item
           const groupItems = grp.conditions || grp.items || []
           return (
@@ -373,6 +418,9 @@ export default function ConditionGroupEditor({ conditions = [], logic = 'AND', d
 }
 
 function ConditionRow({ condition, fieldList, onChange, onRemove, canRemove, onDragStart, onDragOver, onDragLeave, onDrop, isDragOver }) {
+  const gdpr = getGdprField(condition.field)
+  const gdprOps = gdpr ? gdpr.operators : OPERATORS
+
   return (
     <div
       draggable
@@ -380,25 +428,49 @@ function ConditionRow({ condition, fieldList, onChange, onRemove, canRemove, onD
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
-      className={`flex items-start sm:items-center gap-2 text-[11px] rounded-lg border p-1.5 sm:p-1.5 transition-all cursor-grab active:cursor-grabbing ${
+      className={`flex flex-col gap-1 rounded-lg border p-1.5 sm:p-1.5 transition-all cursor-grab active:cursor-grabbing ${
         isDragOver ? 'border-[#3b82f6] bg-[#3b82f6]/5 shadow-md' : 'border-[#e5e7eb] dark:border-[#2d3140] bg-[#f9fafb] dark:bg-[#0f1117]'
-      }`}>
-      <div className="flex items-center gap-0.5 text-[#9ca3af] opacity-40 cursor-grab">
-        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M8 6h2v2H8V6zm6 0h2v2h-2V6zM8 11h2v2H8v-2zm6 0h2v2h-2v-2zm-6 5h2v2H8v-2zm6 0h2v2h-2v-2z"/></svg>
+      } ${gdpr ? 'border-l-2 border-l-blue-400 dark:border-l-blue-600' : ''}`}>
+      <div className="flex items-start sm:items-center gap-2 text-[11px]">
+        <div className="flex items-center gap-0.5 text-[#9ca3af] opacity-40 cursor-grab mt-0.5 sm:mt-0">
+          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M8 6h2v2H8V6zm6 0h2v2h-2V6zM8 11h2v2H8v-2zm6 0h2v2h-2v-2zm-6 5h2v2H8v-2zm6 0h2v2h-2v-2z"/></svg>
+        </div>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1 flex-1">
+          <FieldPicker value={condition.field} onChange={v => onChange({ ...condition, field: v })} fieldList={fieldList} />
+          <div className="hidden sm:block text-[#d1d5db] dark:text-[#4b5563] self-center text-[10px]">|</div>
+          <select className="bg-transparent outline-none text-soc-stext dark:text-soc-darkstext w-full sm:w-20 py-0.5 cursor-pointer text-[10px]" value={condition.operator} onChange={e => onChange({ ...condition, operator: e.target.value })}>
+            {gdprOps.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+          <div className="hidden sm:block text-[#d1d5db] dark:text-[#4b5563] self-center text-[10px]">|</div>
+          <input className="flex-1 bg-transparent outline-none text-soc-stext dark:text-soc-darkstext py-0.5 text-[10px] w-full sm:w-auto min-w-[80px]" placeholder="value" value={condition.value || ''} onChange={e => onChange({ ...condition, value: e.target.value })} />
+        </div>
+        {canRemove && (
+          <button onClick={onRemove} className="p-1 text-[#9ca3af] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all shrink-0 mt-0.5 sm:mt-0">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        )}
       </div>
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1 flex-1">
-        <FieldPicker value={condition.field} onChange={v => onChange({ ...condition, field: v })} fieldList={fieldList} />
-        <div className="hidden sm:block text-[#d1d5db] dark:text-[#4b5563] self-center text-[10px]">|</div>
-        <select className="bg-transparent outline-none text-soc-stext dark:text-soc-darkstext w-full sm:w-20 py-0.5 cursor-pointer text-[10px]" value={condition.operator} onChange={e => onChange({ ...condition, operator: e.target.value })}>
-          {OPERATORS.map(o => <option key={o} value={o}>{o}</option>)}
-        </select>
-        <div className="hidden sm:block text-[#d1d5db] dark:text-[#4b5563] self-center text-[10px]">|</div>
-        <input className="flex-1 bg-transparent outline-none text-soc-stext dark:text-soc-darkstext py-0.5 text-[10px] w-full sm:w-auto min-w-[80px]" placeholder="value" value={condition.value || ''} onChange={e => onChange({ ...condition, value: e.target.value })} />
-      </div>
-      {canRemove && (
-        <button onClick={onRemove} className="p-1 text-[#9ca3af] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all shrink-0">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
-        </button>
+
+      {gdpr && (
+        <div className="flex items-center gap-1.5 ml-5 sm:ml-6">
+          <span className="text-[9px] text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded font-medium whitespace-nowrap">
+            {gdpr.icon} {gdpr.category} — {gdpr.gdprArticle}
+          </span>
+          {gdpr.presetValues.length > 0 && (
+            <div className="flex items-center gap-1 overflow-x-auto">
+              {gdpr.presetValues.map(pv => (
+                <button key={pv} onClick={() => onChange({ ...condition, value: pv })}
+                  className={`text-[9px] px-1.5 py-0.5 rounded-full border transition-colors whitespace-nowrap ${
+                    condition.value === pv
+                      ? 'bg-[#3b82f6] text-white border-[#3b82f6]'
+                      : 'bg-white dark:bg-[#2d3140] text-[#6b7280] dark:text-[#9ca3af] border-[#e5e7eb] dark:border-[#4b5563] hover:border-[#3b82f6] hover:text-[#3b82f6]'
+                  }`}>
+                  {pv}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   )

@@ -8,6 +8,7 @@ import VersionHistoryPanel from './VersionHistoryPanel'
 import ConditionGroupEditor from './ConditionGroupEditor'
 import { evalRule, interpolateMessage } from '../services/ruleEngine'
 import { resolveField } from '../utils'
+import { GDPR_FIELDS } from '../data/gdprFields'
 import { api } from '../api'
 import { useApp } from '../context/AppContext'
 import { useToast } from '../context/ToastContext'
@@ -121,16 +122,20 @@ function Kbd({ children }) {
   return <kbd className="hidden lg:inline px-1 py-0.5 text-[9px] font-mono rounded bg-[#f3f4f6] dark:bg-[#2d3140] text-[#9ca3af] border border-[#e5e7eb] dark:border-[#2d3140]">{children}</kbd>
 }
 
+const GDPR_FIELD_NAMES = GDPR_FIELDS.map(f => f.field)
+
 let dynamicFields = null
 function getFields() {
-  if (dynamicFields) return dynamicFields
-  const stored = sessionStorage.getItem('ruleFields')
-  if (stored) { dynamicFields = JSON.parse(stored); return dynamicFields }
-  return COMMON_FIELDS
+  const base = dynamicFields || (() => {
+    const stored = sessionStorage.getItem('ruleFields')
+    if (stored) { dynamicFields = JSON.parse(stored); return dynamicFields }
+    return COMMON_FIELDS
+  })()
+  return [...new Set([...base, ...GDPR_FIELD_NAMES])].sort((a, b) => a.localeCompare(b))
 }
 
 function storeFields(list) {
-  const merged = [...new Set([...COMMON_FIELDS, ...list])].sort((a, b) => a.localeCompare(b))
+  const merged = [...new Set([...COMMON_FIELDS, ...GDPR_FIELD_NAMES, ...list])].sort((a, b) => a.localeCompare(b))
   dynamicFields = merged
   try { sessionStorage.setItem('ruleFields', JSON.stringify(merged)) } catch {}
 }
