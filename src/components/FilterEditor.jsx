@@ -208,7 +208,8 @@ export default function FilterEditor({ filter = null, onClose, onSave }) {
   const isRangeOp = operator === 'is between' || operator === 'is not between'
   const isListOp = operator === 'is one of' || operator === 'is not one of'
   const isExistsOp = operator === 'exists' || operator === 'does not exist'
-  const isNegatable = !isExistsOp
+  const alreadyNegated = ['is not', 'does not contain', 'is not one of', 'is not between'].includes(operator)
+  const isNegatable = !isExistsOp && !alreadyNegated
 
   const filteredFields = useMemo(() => {
     if (!fieldSearch) return fields.slice(0, 100)
@@ -233,9 +234,10 @@ export default function FilterEditor({ filter = null, onClose, onSave }) {
         customLabel: showCustomLabel ? customLabel || null : null
       })
     } else {
+      const actualNegate = isNegatable ? negate : false
       if (isExistsOp) addFilter(field, value || '__exists__', false, operator)
-      else if (isRangeOp) addFilter(field, value, negate, operator, { from: value, to: secondValue })
-      else addFilter(field, value, negate, operator)
+      else if (isRangeOp) addFilter(field, value, actualNegate, operator, { from: value, to: secondValue })
+      else addFilter(field, value, actualNegate, operator)
       doSearch()
     }
     onClose?.()
