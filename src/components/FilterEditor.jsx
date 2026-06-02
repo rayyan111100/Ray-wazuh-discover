@@ -169,7 +169,7 @@ function ComboBox({ options, value, onChange, placeholder, disabled }) {
 }
 
 export default function FilterEditor({ filter = null, onClose, onSave }) {
-  const { fields, addFilter, loadFields } = useApp()
+  const { fields, addFilter, loadFields, doSearch } = useApp()
   const isEdit = !!filter
 
   const initOp = filter?.operator || (filter?.type === 'exists' ? 'exists' : 'is')
@@ -236,6 +236,7 @@ export default function FilterEditor({ filter = null, onClose, onSave }) {
       if (isExistsOp) addFilter(field, value || '__exists__', false, operator)
       else if (isRangeOp) addFilter(field, value, negate, operator, { from: value, to: secondValue })
       else addFilter(field, value, negate, operator)
+      doSearch()
     }
     onClose?.()
   }

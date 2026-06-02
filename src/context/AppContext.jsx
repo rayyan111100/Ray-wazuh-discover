@@ -37,6 +37,8 @@ export function AppProvider({ children }) {
   const [selectedRules, setSelectedRules] = useState([])
   const [groupFilter, setGroupFilter] = useState([])
   const refreshRef = useRef(null)
+  const filtersRef = useRef(filters)
+  useEffect(() => { filtersRef.current = filters }, [filters])
 
   const setTheme = useCallback(t => {
     setThemeRaw(t)
@@ -64,8 +66,9 @@ export function AppProvider({ children }) {
     setLoading(true)
     setError(null)
     try {
+      const currentFilters = opts.filters !== undefined ? opts.filters : filtersRef.current
       const userQ = opts.q !== undefined ? opts.q : dql
-      const filterQ = buildDqlText(filters)
+      const filterQ = buildDqlText(currentFilters)
       let combined = ''
       if (userQ && filterQ) combined = '(' + userQ + ') AND ' + filterQ
       else combined = userQ || filterQ
@@ -82,7 +85,7 @@ export function AppProvider({ children }) {
       const d = await api('search', params)
       const totalRes = d.total || 0
       let res = d.results || []
-      res = applyClientFilters(res, filters)
+      res = applyClientFilters(res, currentFilters)
       setTotal(totalRes)
       setResults(res)
       if (opts.noHistogram !== true) loadHistogram(params)
@@ -93,27 +96,30 @@ export function AppProvider({ children }) {
     } finally {
       setLoading(false)
     }
-  }, [filters, dql, limit, index, sortField, sortOrder, resolveTimeRange])
+  }, [dql, limit, index, sortField, sortOrder, resolveTimeRange])
 
   const addFilter = useCallback((field, value, negate, operator, params) => {
-    setFilters(prev => {
-      const isExists = value === '__exists__'
-      const fv = isExists ? '_exists_' : String(value)
-      const ft = isExists ? 'exists' : 'value'
-      const op = operator || (isExists ? 'exists' : negate ? 'is not' : 'is')
-      if (ft === 'exists') negate = false
-      const dup = prev.find(f => f.field === field && f.value === fv && (f.operator || 'is') === op)
-      if (dup) return prev
-      return [...prev, { id: genId(), field, value: fv, negate: !!negate, type: ft, operator: op, params: params || null, secondValue: null }]
-    })
+    const isExists = value === '__exists__'
+    const fv = isExists ? '_exists_' : String(value)
+    const ft = isExists ? 'exists' : 'value'
+    const op = operator || (isExists ? 'exists' : negate ? 'is not' : 'is')
+    if (ft === 'exists') negate = false
+    const newFilter = { id: genId(), field, value: fv, negate: !!negate, type: ft, operator: op, params: params || null, secondValue: null }
+    const dup = filtersRef.current.find(f => f.field === field && f.value === fv && (f.operator || 'is') === op)
+    if (!dup) {
+      filtersRef.current = [...filtersRef.current, newFilter]
+      setFilters(filtersRef.current)
+    }
   }, [])
 
   const editFilter = useCallback((id, updates) => {
-    setFilters(prev => prev.map(f => f.id === id ? { ...f, ...updates } : f))
+    filtersRef.current = filtersRef.current.map(f => f.id === id ? { ...f, ...updates } : f)
+    setFilters(filtersRef.current)
   }, [])
 
   const removeFilter = useCallback(id => {
-    setFilters(prev => prev.filter(f => f.id !== id))
+    filtersRef.current = filtersRef.current.filter(f => f.id !== id)
+    setFilters(filtersRef.current)
   }, [])
 
   const loadHistogram = useCallback(async (params) => {
