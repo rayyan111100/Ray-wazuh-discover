@@ -270,6 +270,65 @@ export function applyClientFilters(results, filters, matchMode = 'and') {
   })
 }
 
+export function extractTotal(resp) {
+  if (!resp) return 0
+  if (typeof resp.count === 'number') return resp.count
+  if (resp.data?.count) return resp.data.count
+  if (resp.total) return resp.total
+  if (resp.data?.total_affected_items) return resp.data.total_affected_items
+  if (resp.hits?.total) {
+    const t = resp.hits.total
+    return typeof t === 'object' ? (t.value ?? 0) : t
+  }
+  if (resp.data?.hits?.total) {
+    const t = resp.data.hits.total
+    return typeof t === 'object' ? (t.value ?? 0) : t
+  }
+  return 0
+}
+
+export function extractResults(resp) {
+  if (!resp) return []
+  if (Array.isArray(resp.results)) return resp.results
+  if (resp.data?.items) return resp.data.items
+  if (resp.hits?.hits) return resp.hits.hits.map(h => h._source ?? h)
+  if (resp.data?.hits?.hits) return resp.data.hits.hits.map(h => h._source ?? h)
+  return []
+}
+
+export function parseDql(input) {
+  if (!input || typeof input !== 'string') return null
+  const trimmed = input.trim()
+  // Complex queries with AND/OR → send raw to server
+  if (/\b(AND|OR)\b/i.test(trimmed)) return null
+  // Match simple field:value or field:>value etc.
+  // Supports field names with dots (rule.id), underscores, hyphens
+  const m = trimmed.match(/^([\w][\w.\-]*):(.+)$/)
+  if (!m) return null
+  const field = m[1]
+  let rawVal = m[2].trim()
+
+  // Handle quoted values: field:"value with spaces"
+  if (rawVal.startsWith('"') && rawVal.endsWith('"')) {
+    rawVal = rawVal.slice(1, -1)
+  }
+
+  // Detect operator prefix in value
+  const opMatch = rawVal.match(/^(>=|<=|>|<)(.+)$/)
+  if (opMatch) {
+    const opMap = { '>=': 'is greater than or equal', '<=': 'is less than or equal', '>': 'is greater than', '<': 'is less than' }
+    return { field, value: opMatch[2].trim(), operator: opMap[opMatch[1]] }
+  }
+
+  // Handle wildcard/regex patterns
+  if (rawVal.includes('*') || rawVal.includes('?')) {
+    return { field, value: rawVal, operator: 'wildcard' }
+  }
+
+  // Simple equality
+  return { field, value: rawVal, operator: 'is' }
+}
+
 export function resolveField(obj, path) {
   try { return path.split('.').reduce((o, p) => o?.[p], obj) ?? '' }
   catch { return '' }

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
 import { api } from '../api'
-import { applyClientFilters, buildDqlText, parseDateStr, COMMON_FIELDS, inferFieldTypes } from '../utils'
+import { applyClientFilters, buildDqlText, parseDateStr, COMMON_FIELDS, inferFieldTypes, extractTotal, extractResults } from '../utils'
 import { getRule, getAllRules, updateRule, deleteRule, toggleRuleEnabled } from '../services/ruleStorage'
 import { addRulesToGroup, moveRulesToGroup, removeRulesFromGroup } from '../services/ruleGroupManager'
 
@@ -97,11 +97,16 @@ export function AppProvider({ children }) {
       const fullFilterQ = buildDqlText(currentFilters, matchMode)
 
       // Build SERVER filter DQL (exclude operators the Wazuh API search endpoint ignores)
-      // Known issues: NOT, is not, range operators on nested fields, regex, wildcard
+      // Known issues: NOT, is not, range operators, wildcard, regex, contains, starts/ends with
       const serverSafe = currentFilters.filter(f =>
         !f.disabled &&
         !f.negate &&
-        !['is not', 'does not contain', 'is not one of', 'is not between', 'does not exist', 'matches regex', 'wildcard'].includes(f.operator)
+        !['is not', 'does not contain', 'is not one of', 'is not between', 'does not exist',
+          'matches regex', 'wildcard',
+          'is greater than', 'is greater than or equal', 'is less than', 'is less than or equal',
+          'is between', 'is not between',
+          'contains', 'starts with', 'ends with'
+        ].includes(f.operator)
       )
       const serverFilterQ = buildDqlText(serverSafe, matchMode)
 
@@ -125,8 +130,9 @@ export function AppProvider({ children }) {
         api('search', params),
         api('count', { index: params.index, q: params.q || '*', start_date: params.start_date, end_date: params.end_date }).catch(() => null)
       ])
-      let totalRes = c?.count ?? d.total ?? 0
-      let res = d.results || []
+
+      let totalRes = extractTotal(c) || extractTotal(d)
+      let res = extractResults(d)
 
       // Auto-fallback: if 0 results in 4.x index, try broader index
       if ((totalRes === 0 || totalRes === 10000) && params.index && params.index.includes('4.x') && !opts.index) {
@@ -136,11 +142,12 @@ export function AppProvider({ children }) {
             api('search', fallbackParams),
             api('count', { index: 'wazuh-alerts-*', q: params.q || '*', start_date: params.start_date, end_date: params.end_date }).catch(() => null)
           ])
-          if (fd.total > 0) {
+          const fdTotal = extractTotal(fd) || extractTotal(fc)
+          if (fdTotal > 0) {
             setIndex('wazuh-alerts-*')
-            setWarning(`Switched to wazuh-alerts-* (found ${fc?.count || fd.total} results). No data in ${params.index}.`)
-            totalRes = fc?.count ?? fd.total ?? 0
-            res = fd.results || []
+            setWarning(`Switched to wazuh-alerts-* (found ${fdTotal} results). No data in ${params.index}.`)
+            totalRes = fdTotal
+            res = extractResults(fd)
           }
         } catch {}
       }
@@ -221,7 +228,7 @@ export function AppProvider({ children }) {
     if (fieldList.length === 0) {
       try {
         const sample = await api('search', { index, limit: 3, sort: '@timestamp', order: 'desc' })
-        const docs = sample.results || []
+        const docs = extractResults(sample)
         if (docs.length > 0) {
           fieldList = inferFieldTypes(docs)
         }

@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext'
 import DateRangePicker from './DateRangePicker'
 import RefreshInterval from './RefreshInterval'
 import FilterEditor from './FilterEditor'
+import { parseDql } from '../utils'
 
 const COMMON = [
   { label: 'Today', start: 'now/d', end: 'now' },
@@ -147,14 +148,63 @@ export default function QueryBar() {
 
   const handleKeyDown = e => {
     if (e.key === 'Enter') {
-      const val = e.target.value
+      submitSearch(e.target.value)
+    }
+  }
+
+  const handleSearchClick = () => {
+    submitSearch(dqlRef.current)
+  }
+
+  function submitSearch(val) {
+    if (!val) { setDql(''); doSearch({ q: '' }); return }
+
+    // Try to split complex DQL (AND/OR) into multiple filters
+    const parts = splitDql(val)
+    if (parts.length > 0) {
+      parts.forEach(p => addFilter(p.field, p.value, false, p.operator))
+      setDql('')
+      doSearch({ q: '' })
+      return
+    }
+
+    // Simple field:value → single filter chip
+    const parsed = parseDql(val)
+    if (parsed) {
+      addFilter(parsed.field, parsed.value, false, parsed.operator)
+      setDql('')
+      doSearch({ q: '' })
+    } else {
       setDql(val)
       doSearch({ q: val })
     }
   }
 
-  const handleSearchClick = () => {
-    doSearch({ q: dqlRef.current })
+  // Split "rule.level:>=12 OR agent.name:*" into multiple filters
+  // Split on AND/OR, parse each part individually
+  function splitDql(input) {
+    if (!input) return []
+    const trimmed = input.trim()
+    let matchMode = ''
+    let rawParts = []
+
+    if (/\bOR\b/i.test(trimmed)) {
+      matchMode = 'or'
+      rawParts = trimmed.split(/\s+OR\s+/i)
+    } else if (/\bAND\b/i.test(trimmed)) {
+      matchMode = 'and'
+      rawParts = trimmed.split(/\s+AND\s+/i)
+    } else {
+      return [] // not a complex query
+    }
+
+    const filters = rawParts.map(p => parseDql(p)).filter(Boolean)
+    if (filters.length < 2) return [] // failed to parse, fall back to raw
+
+    // Set filter match mode
+    setFilterMatch(matchMode)
+
+    return filters
   }
 
   const handleEdit = (filter) => {

@@ -72,7 +72,7 @@ export default function DiscoverTab() {
               `\u{1F4CA} Top 10 Rule IDs (${index}):\n\n${idsList}\n\nClick OK to use the most active rule ID as filter`
             )
             if (useRule && res.buckets[0]) {
-              addFilter(String(res.buckets[0].key), String(res.buckets[0].key), false, 'is')
+              addFilter('rule.id', String(res.buckets[0].key), false, 'is')
               doSearch()
             }
           } else {
