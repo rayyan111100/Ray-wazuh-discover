@@ -15,8 +15,8 @@ export default function RefreshInterval() {
         onChange={e => setRefreshValue(Math.max(0, parseInt(e.target.value) || 0))}
         className={`w-12 px-1.5 py-1 text-xs text-center rounded border outline-none transition-colors ${
           isDark
-            ? 'bg-[#0f1117] border-[#2d3140] text-[#e4e6eb] focus:border-[#60a5fa]'
-            : 'bg-white border-[#e5e7eb] text-[#1a1c23] focus:border-[#3b82f6]'
+            ? 'bg-[#0f1117] border-[#2d3140] text-[#e4e6eb] focus:border-[#EF843C]'
+            : 'bg-white border-[#e5e7eb] text-[#1a1c23] focus:border-[#EF843C]'
         }`}
         aria-label="Refresh interval value"
       />
@@ -26,8 +26,8 @@ export default function RefreshInterval() {
           onChange={e => setRefreshUnit(e.target.value)}
           className={`appearance-none px-1.5 py-1 text-xs rounded border outline-none pr-5 transition-colors ${
             isDark
-              ? 'bg-[#0f1117] border-[#2d3140] text-[#e4e6eb] focus:border-[#60a5fa]'
-              : 'bg-white border-[#e5e7eb] text-[#1a1c23] focus:border-[#3b82f6]'
+              ? 'bg-[#0f1117] border-[#2d3140] text-[#e4e6eb] focus:border-[#EF843C]'
+              : 'bg-white border-[#e5e7eb] text-[#1a1c23] focus:border-[#EF843C]'
           }`}
           aria-label="Refresh interval units"
         >
@@ -44,7 +44,7 @@ export default function RefreshInterval() {
           refreshActive
             ? 'bg-[#dc2626] text-white hover:bg-[#b91c1c]'
             : refreshValue
-              ? isDark ? 'bg-[#3b82f6] text-white hover:bg-[#2563eb]' : 'bg-[#3b82f6] text-white hover:bg-[#2563eb]'
+              ? isDark ? 'bg-[#EF843C] text-white hover:bg-[#e0752a]' : 'bg-[#EF843C] text-white hover:bg-[#e0752a]'
               : isDark ? 'bg-[#2d3140] text-[#6b7280] cursor-not-allowed' : 'bg-[#e5e7eb] text-[#9ca3af] cursor-not-allowed'
         }`}
       >

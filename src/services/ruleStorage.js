@@ -55,7 +55,7 @@ export function createGroup(defaults = {}) {
     id: createGroupId(),
     name: defaults.name || 'New Group',
     description: defaults.description || '',
-    color: defaults.color || '#3b82f6',
+    color: defaults.color,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   }
@@ -96,13 +96,19 @@ export function createRule(defaults = {}) {
   const r = {
     id: createId(),
     name: defaults.name || 'New Rule',
-    enabled: true,
-    overwrite: true,
-    conditionLogic: 'AND',
-    actions: [{ type: 'alert', params: { severity: 'high', message: '' } }],
-    conditions: [],
+    enabled: defaults.enabled !== undefined ? defaults.enabled : true,
+    overwrite: defaults.overwrite !== undefined ? defaults.overwrite : true,
+    conditionLogic: defaults.conditionLogic || 'AND',
+    actions: defaults.actions || [{ type: 'alert', params: { severity: 'high', message: '' } }],
+    conditions: defaults.conditions || [],
     groupIds: defaults.groupIds || [],
     tags: defaults.tags || [],
+    frequency: defaults.frequency || 0,
+    timeframe: defaults.timeframe || 0,
+    timeframeUnit: defaults.timeframeUnit || 'm',
+    suppression: defaults.suppression || 0,
+    suppressionMax: defaults.suppressionMax || 0,
+    suppressionField: defaults.suppressionField || 'agent.name',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   }

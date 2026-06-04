@@ -84,7 +84,7 @@ export default function VersionHistoryPanel({ ruleId, onRollback, onExport }) {
         <span className="text-[10px] uppercase font-semibold text-[#9ca3af] tracking-wider">{versions.length} version{versions.length !== 1 ? 's' : ''}</span>
         {!compareMode && versions.length >= 2 && (
           <button onClick={() => { setCompareMode(true); setV1Idx(null); setV2Idx(null); setSelectedV(null) }}
-            className="text-[9px] text-[#3b82f6] hover:underline">Compare</button>
+            className="text-[9px] text-[#EF843C] hover:underline">Compare</button>
         )}
         {compareMode && (
           <button onClick={() => setCompareMode(false)}
@@ -97,7 +97,7 @@ export default function VersionHistoryPanel({ ruleId, onRollback, onExport }) {
           <div key={v.id}
             className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-colors ${
               selectedV && !selectedV.compare && selectedV.v1 === v
-                ? 'bg-[#3b82f6]/10 dark:bg-[#3b82f6]/20'
+                ? 'bg-[#EF843C]/10 dark:bg-[#EF843C]/20'
                 : 'hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140]'
             } ${compareMode ? 'border border-dashed border-[#d1d5db] dark:border-[#4b5563]' : ''}`}
             onClick={() => {
@@ -111,7 +111,7 @@ export default function VersionHistoryPanel({ ruleId, onRollback, onExport }) {
             }}>
             {compareMode && (
               <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                v1Idx === idx ? 'border-[#3b82f6] bg-[#3b82f6]' :
+                v1Idx === idx ? 'border-[#EF843C] bg-[#EF843C]' :
                 v2Idx === idx ? 'border-[#8b5cf6] bg-[#8b5cf6]' :
                 'border-[#d1d5db] dark:border-[#4b5563]'
               }`}>
@@ -128,7 +128,7 @@ export default function VersionHistoryPanel({ ruleId, onRollback, onExport }) {
             {!compareMode && (
               <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100">
                 <button onClick={e => { e.stopPropagation(); setRollbackTarget(idx) }}
-                  className="p-0.5 text-[#9ca3af] hover:text-[#3b82f6] transition-colors" title="Rollback">
+                  className="p-0.5 text-[#9ca3af] hover:text-[#EF843C] transition-colors" title="Rollback">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 10h10a5 5 0 015 5v2M3 10l4-4M3 10l4 4"/></svg>
                 </button>
                 <button onClick={e => { e.stopPropagation(); handleExport(idx) }}
@@ -143,7 +143,7 @@ export default function VersionHistoryPanel({ ruleId, onRollback, onExport }) {
 
       {compareMode && v1Idx !== null && v2Idx !== null && (
         <button onClick={compareVersions}
-          className="w-full mt-2 text-[10px] px-2 py-1.5 bg-[#3b82f6] text-white rounded-lg hover:bg-[#2563eb] transition-colors">
+          className="w-full mt-2 text-[10px] px-2 py-1.5 bg-[#EF843C] text-white rounded-lg hover:bg-[#e0752a] transition-colors">
           Compare v{displayList[v1Idx].versionNumber} vs v{displayList[v2Idx].versionNumber}
         </button>
       )}

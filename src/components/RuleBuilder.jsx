@@ -6,6 +6,7 @@ import { addRulesToGroup } from '../services/ruleGroupManager'
 import GroupBulkActions from './GroupBulkActions'
 import VersionHistoryPanel from './VersionHistoryPanel'
 import ConditionGroupEditor from './ConditionGroupEditor'
+import ResizableSplitter from './ResizableSplitter'
 import { evalRule, interpolateMessage } from '../services/ruleEngine'
 import { resolveField } from '../utils'
 import { GDPR_FIELDS, getGdprField } from '../data/gdprFields'
@@ -44,7 +45,7 @@ const COMMON_FIELDS = [
 const OPERATORS = ['equals', 'contains', 'regex', 'startsWith', 'endsWith', 'gt', 'gte', 'lt', 'lte', 'inList', 'exists']
 const SEVERITIES = ['critical', 'high', 'medium', 'low', 'info']
 
-const SEV_COLORS = { critical: { dot: '#dc2626', bg: '#fef2f2', darkBg: '#dc26261a', text: '#dc2626', darkText: '#fca5a5' }, high: { dot: '#ea580c', bg: '#fff7ed', darkBg: '#ea580c1a', text: '#ea580c', darkText: '#fdba74' }, medium: { dot: '#ca8a04', bg: '#fefce8', darkBg: '#ca8a041a', text: '#ca8a04', darkText: '#fde047' }, low: { dot: '#16a34a', bg: '#f0fdf4', darkBg: '#16a34a1a', text: '#16a34a', darkText: '#86efac' }, info: { dot: '#2563eb', bg: '#eff6ff', darkBg: '#3b82f61a', text: '#2563eb', darkText: '#93c5fd' } }
+const SEV_COLORS = { critical: { dot: '#dc2626', bg: '#fef2f2', darkBg: '#dc26261a', text: '#dc2626', darkText: '#fca5a5' }, high: { dot: '#ea580c', bg: '#fff7ed', darkBg: '#ea580c1a', text: '#ea580c', darkText: '#fdba74' }, medium: { dot: '#ca8a04', bg: '#fefce8', darkBg: '#ca8a041a', text: '#ca8a04', darkText: '#fde047' }, low: { dot: '#16a34a', bg: '#f0fdf4', darkBg: '#16a34a1a', text: '#16a34a', darkText: '#86efac' }, info: { dot: '#e0752a', bg: '#eff6ff', darkBg: '#EF843C1a', text: '#e0752a', darkText: '#93c5fd' } }
 
 function cleanItem(item) {
   if (item.type === 'group') {
@@ -78,7 +79,7 @@ function cleanRule(r) {
 function Toggle({ checked, onChange }) {
   return (
     <button type="button" role="switch" aria-checked={checked} onClick={onChange}
-      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#3b82f6]/30 ${checked ? 'bg-[#3b82f6]' : 'bg-[#d1d5db] dark:bg-[#4b5563]'}`}>
+      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#EF843C]/30 ${checked ? 'bg-[#EF843C]' : 'bg-[#d1d5db] dark:bg-[#4b5563]'}`}>
       <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform ring-0 transition-all duration-200 ${checked ? 'translate-x-4' : 'translate-x-0'}`} />
     </button>
   )
@@ -148,15 +149,16 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
   const [testResults, setTestResults] = useState(null)
   const [testLoading, setTestLoading] = useState(false)
   const [testJson, setTestJson] = useState('')
-  const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [fields, setFieldsState] = useState(getFields)
   const [extractedFields, setExtractedFields] = useState(null)
-  const [selectedRuleIds, setSelectedRuleIds] = useState([])
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState('name')
   const [sortOrder, setSortOrder] = useState('asc')
   const [addToGroupRuleId, setAddToGroupRuleId] = useState(null)
   const [saveComment, setSaveComment] = useState('')
   const [showSaveModal, setShowSaveModal] = useState(false)
+  const [selectedRuleIds, setSelectedRuleIds] = useState([])
+  const [fields, setFields] = useState(() => getFields())
   const [showHistory, setShowHistory] = useState(false)
   const { pendingRuleId, setPendingRuleId } = useApp()
   const toast = useToast()
@@ -177,7 +179,7 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
           extractFieldPaths(doc).forEach(p => { if (!p.startsWith('_') && p !== 'id') paths.add(p) })
         }
         storeFields([...paths])
-        setFieldsState(getFields())
+        setFields(getFields())
       }).catch(() => {})
     }
   }, [])
@@ -420,7 +422,7 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
       const paths = extractFieldPaths(doc).filter(p => !p.startsWith('_') && p !== 'id')
       setExtractedFields(paths)
       storeFields(paths)
-      setFieldsState(getFields())
+      setFields(getFields())
     } catch {}
   }
 
@@ -432,7 +434,7 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
       const paths = extractFieldPaths(doc).filter(p => !p.startsWith('_') && p !== 'id')
       setExtractedFields(paths)
       storeFields(paths)
-      setFieldsState(getFields())
+      setFields(getFields())
       const result = evalRule(editing, doc)
       const actions = result.matched ? (editing.actions || []).map(a => ({
         ...a, computedSeverity: a.type === 'alert' ? computeSeverity(a, doc) : null,
@@ -447,10 +449,11 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
   const allRules = getAllRules()
   const allGroups = getAllGroups()
   const groupMap = Object.fromEntries(allGroups.map(g => [g.id, g]))
-  const visibleRules = (filterGroupIds.length > 0
-    ? allRules.filter(r => (r.groupIds || []).some(gid => filterGroupIds.includes(gid)))
-    : allRules
-  ).sort((a, b) => {
+  const visibleRules = allRules.filter(r => {
+    if (filterGroupIds.length > 0 && !(r.groupIds || []).some(gid => filterGroupIds.includes(gid))) return false
+    if (searchQuery && !r.name.toLowerCase().includes(searchQuery.toLowerCase())) return false
+    return true
+  }).sort((a, b) => {
     let cmp = 0
     switch (sortBy) {
       case 'name': cmp = a.name.localeCompare(b.name); break
@@ -477,12 +480,12 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
           </svg>
         </button>
         <span className="font-semibold text-soc-stext dark:text-soc-darkstext flex items-center gap-1.5 shrink-0">
-          <svg className="w-3.5 h-3.5 text-[#3b82f6]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9M16.376 3.622a1 1 0 013.002 3.002L7.368 18.635a2 2 0 01-.855.506l-2.872.838a.5.5 0 01-.62-.62l.838-2.872a2 2 0 01.506-.854z"/></svg>
+          <svg className="w-3.5 h-3.5 text-[#EF843C]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9M16.376 3.622a1 1 0 013.002 3.002L7.368 18.635a2 2 0 01-.855.506l-2.872.838a.5.5 0 01-.62-.62l.838-2.872a2 2 0 01.506-.854z"/></svg>
           <span className="hidden sm:inline">Rules Engine</span>
         </span>
         <span className="text-[#9ca3af] dark:text-[#6b7280] ml-1 shrink-0">
           {filterGroupIds.length > 0 ? `${visibleRules.length} of ` : ''}{allRules.length} rules, {visibleRules.filter(r => r.enabled).length} enabled
-          {filterGroupIds.length > 0 && <span className="ml-1 text-[#3b82f6]">(filtered)</span>}
+          {filterGroupIds.length > 0 && <span className="ml-1 text-[#EF843C]">(filtered)</span>}
         </span>
 
         {allGroups.length > 0 && (
@@ -493,10 +496,8 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
               return (
                 <button key={g.id} onClick={() => { const upd = active ? filterGroupIds.filter(id => id !== g.id) : [...filterGroupIds, g.id]; onGroupFilterChange && onGroupFilterChange(upd) }}
                   className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-medium transition-all whitespace-nowrap ${
-                    active ? 'text-white shadow-sm' : 'bg-[#f3f4f6] dark:bg-[#2d3140] text-[#6b7280] dark:text-[#9ca3af] hover:bg-[#e5e7eb] dark:hover:bg-[#374151]'
-                  }`}
-                  style={active ? { backgroundColor: g.color } : {}}>
-                  <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ backgroundColor: active ? 'white' : g.color }} />
+                    active ? 'bg-[#324059] text-white shadow-sm' : 'bg-[#f3f4f6] dark:bg-[#2d3140] text-[#6b7280] dark:text-[#9ca3af] hover:bg-[#e5e7eb] dark:hover:bg-[#374151]'
+                  }`}>
                   {g.name}
                   <span className="opacity-70">({cnt})</span>
                 </button>
@@ -526,23 +527,35 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
         </div>
       </header>
       <div className="flex flex-1 overflow-hidden">
-        <AnimatePresence initial={false}>
-          {sidebarOpen && (
-            <motion.aside key="sidebar" initial={{ width: 0, opacity: 0 }} animate={{ width: 'auto', opacity: 1 }} exit={{ width: 0, opacity: 0 }}
-              transition={{ duration: 0.2, ease: 'easeInOut' }}
-              className="border-r border-[#e5e7eb] dark:border-[#2d3140] overflow-hidden bg-white dark:bg-[#16181f] shrink-0">
-              <div className="w-56 flex flex-col h-full">
+        {sidebarOpen ? (
+          <ResizableSplitter
+            defaultRatio={0.22}
+            minRatio={0.12}
+            maxRatio={0.4}
+            direction="horizontal"
+            storageKey="unishield_rulebuilder_split"
+          >
+            <aside className="overflow-hidden bg-white dark:bg-[#16181f] h-full">
+              <div className="flex flex-col h-full">
                 <div className="p-3 border-b border-[#e5e7eb] dark:border-[#2d3140]">
-                  <button onClick={handleNew} className="gbtn text-xs w-full flex items-center justify-center gap-1.5 bg-[#3b82f6] text-white hover:bg-[#2563eb] active:bg-[#1d4ed8] shadow-sm transition-all">
+                  <button onClick={handleNew} className="gbtn text-xs w-full flex items-center justify-center gap-1.5 bg-[#EF843C] text-white hover:bg-[#e0752a] active:bg-[#c85a14] shadow-sm transition-all">
                     <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
                     New Rule
                   </button>
+                </div>
+                <div className="px-3 pt-1.5">
+                  <div className="relative">
+                    <svg className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[#9ca3af]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                    <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                      className="w-full bg-[#f3f4f6] dark:bg-[#2d3140] border border-transparent rounded-lg pl-7 pr-2 py-1 text-[10px] outline-none text-soc-stext dark:text-soc-darkstext placeholder-[#9ca3af] focus:border-[#EF843C]/30 transition-colors"
+                      placeholder="Search rules..." />
+                  </div>
                 </div>
                 <div className="flex-1 overflow-y-auto py-1">
                   {visibleRules.length === 0 && (
                     <div className="flex flex-col items-center gap-2 text-[#9ca3af] text-xs text-center py-10 px-4">
                       <svg className="w-8 h-8 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                      {filterGroupIds.length > 0 ? 'No rules match the selected groups' : 'No rules yet'}
+                      {searchQuery ? 'No rules match your search' : filterGroupIds.length > 0 ? 'No rules match the selected groups' : 'No rules yet'}
                     </div>
                   )}
                   {visibleRules.map(r => {
@@ -563,7 +576,7 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
                           <div className="flex items-center gap-1 shrink-0">
                             <label onClick={e => e.stopPropagation()} className="flex items-center">
                               <input type="checkbox" checked={isSelected} onChange={() => toggleRuleSelection(r.id)}
-                                className="w-3.5 h-3.5 rounded border-[#d1d5db] dark:border-[#4b5563] text-[#3b82f6] focus:ring-[#3b82f6]/30 cursor-pointer" />
+                                className="w-3.5 h-3.5 rounded border-[#d1d5db] dark:border-[#4b5563] text-[#EF843C] focus:ring-[#EF843C]/30 cursor-pointer" />
                             </label>
                             <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
                               selectedId === r.id
@@ -579,7 +592,6 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
                             return (
                               <button key={gid} onClick={e => { e.stopPropagation(); handleSelect(r.id) }}
                                 className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-medium text-white truncate max-w-[80px]"
-                                style={{ backgroundColor: g.color }}
                                 title={g.name}>
                                 {g.name}
                                 <span onClick={e => { e.stopPropagation(); quickAddToGroup(r.id, gid) }}
@@ -590,27 +602,13 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
                               </button>
                             )
                           })}
-                          {ruleGroupIds.length > 2 && (
-                            <span className="text-[8px] text-[#9ca3af] font-medium">+{ruleGroupIds.length - 2}</span>
-                          )}
-                          <div className="relative">
-                            <button onClick={e => { e.stopPropagation(); setAddToGroupRuleId(addToGroupRuleId === r.id ? null : r.id) }}
-                              className="p-0.5 rounded hover:bg-[#e5e7eb] dark:hover:bg-[#374151] text-[#9ca3af] opacity-0 group-hover:opacity-100 transition-all">
-                              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
-                            </button>
-                            {addToGroupRuleId === r.id && (
-                              <div className="absolute left-0 top-full mt-1 bg-white dark:bg-[#1a1d27] border border-[#e5e7eb] dark:border-[#2d3140] rounded-lg shadow-xl py-1 min-w-[140px] z-50">
-                                {allGroups.filter(g => !ruleGroupIds.includes(g.id)).length === 0 && (
-                                  <div className="px-3 py-2 text-[10px] text-[#9ca3af] italic">In all groups</div>
-                                )}
-                                {allGroups.filter(g => !ruleGroupIds.includes(g.id)).map(g => (
-                                  <button key={g.id} onClick={() => quickAddToGroup(r.id, g.id)}
-                                    className="w-full text-left px-3 py-1.5 text-[10px] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] text-soc-stext dark:text-soc-darkstext flex items-center gap-2">
-                                    <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
-                                    {g.name}
-                                  </button>
-                                ))}
-                              </div>
+                          {ruleGroupIds.length > 2 && <span className="text-[8px] text-[#9ca3af]">+{ruleGroupIds.length - 2}</span>}
+                          <div className="flex items-center gap-1 ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span onClick={e => { e.stopPropagation(); quickAddToGroup(r.id) }}
+                              className="text-[9px] px-1 py-0.5 rounded bg-[#f3f4f6] dark:bg-[#2d3140] text-[#9ca3af] hover:text-soc-blue cursor-pointer transition-colors"
+                              title="Add to group">+G</span>
+                            {r.actions?.[0] && (
+                              <span className="text-[8px] px-1 py-0.5 rounded font-medium text-[#6b7280] dark:text-[#9ca3af]">{r.actions[0].params?.severity || 'info'}</span>
                             )}
                           </div>
                         </div>
@@ -618,51 +616,10 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
                     )
                   })}
                 </div>
-                <div className="px-3 py-2 border-t border-[#e5e7eb] dark:border-[#2d3140] flex items-center gap-2">
-                  <label className="flex items-center gap-1.5 text-[10px] text-[#9ca3af] cursor-pointer">
-                    <input type="checkbox" checked={visibleRules.length > 0 && visibleRules.every(r => selectedRuleIds.includes(r.id))}
-                      onChange={toggleSelectAll}
-                      className="w-3.5 h-3.5 rounded border-[#d1d5db] dark:border-[#4b5563] text-[#3b82f6] focus:ring-[#3b82f6]/30 cursor-pointer" />
-                    Select All
-                  </label>
-                  {selectedRuleIds.length > 0 && (
-                    <span className="text-[9px] text-[#3b82f6] font-medium">{selectedRuleIds.length} selected</span>
-                  )}
-                </div>
-                {editing && (
-                  <div className="border-t border-[#e5e7eb] dark:border-[#2d3140]">
-                    <button onClick={() => setShowHistory(o => !o)}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-medium text-[#6b7280] dark:text-[#9ca3af] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] transition-colors">
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                      Version History
-                      <svg className={`w-3 h-3 ml-auto transition-transform ${showHistory ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
-                    </button>
-                    <AnimatePresence>
-                      {showHistory && (
-                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                          className="overflow-hidden">
-                          <div className="px-3 pb-3">
-                            <VersionHistoryPanel ruleId={editing.id}
-                              onRollback={result => {
-                                setEditing(cleanRule(JSON.parse(JSON.stringify(result))))
-                                setDirty(false)
-                              }}
-                              onExport={newId => {
-                                const r = getAllRules().find(x => x.id === newId)
-                                if (r) { refresh(); setEditing(cleanRule(JSON.parse(JSON.stringify(r)))); setSelectedId(newId); setDirty(false) }
-                              }} />
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
               </div>
-            </motion.aside>
-          )}
-        </AnimatePresence>
-        <div className="flex-1 overflow-y-auto p-3 sm:p-5">
-          {!editing ? (
+            </aside>
+            <div className="flex-1 overflow-y-auto p-3 sm:p-5">
+            {!editing ? (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center h-full text-sm text-[#9ca3af] gap-3">
               <svg className="w-12 h-12 opacity-30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
               <span>Select a rule or create a new one</span>
@@ -702,6 +659,7 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
                     logic={editing.conditionLogic}
                     fieldList={fields}
                     depth={0}
+                    canRemove={editing.conditions.length > 1}
                     onChange={newConditions => { patch({ conditions: newConditions }); setDirty(true) }}
                     onLogicChange={newLogic => { patch({ conditionLogic: newLogic }); setDirty(true) }}
                   />
@@ -815,11 +773,9 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
                             }}
                               className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[10px] font-medium transition-all ${
                                 active
-                                  ? 'text-white shadow-sm'
+                                  ? 'bg-[#324059] text-white shadow-sm'
                                   : 'bg-[#f3f4f6] dark:bg-[#2d3140] text-[#6b7280] dark:text-[#9ca3af] hover:bg-[#e5e7eb] dark:hover:bg-[#374151]'
-                              }`}
-                              style={active ? { backgroundColor: g.color } : {}}>
-                              <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ backgroundColor: active ? 'white' : g.color }} />
+                              }`}>
                               {g.name}
                             </button>
                           )
@@ -843,7 +799,7 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
                       Batch (filtered)
                     </button>
                     <button onClick={runTestJson} disabled={testLoading || !testJson.trim()}
-                      className={`gbtn text-xs flex items-center gap-1 ${testLoading ? 'opacity-60 cursor-wait' : ''} bg-[#3b82f6] text-white hover:bg-[#2563eb] active:bg-[#1d4ed8] shadow-sm transition-all`}>
+                      className={`gbtn text-xs flex items-center gap-1 ${testLoading ? 'opacity-60 cursor-wait' : ''} bg-[#EF843C] text-white hover:bg-[#e0752a] active:bg-[#c85a14] shadow-sm transition-all`}>
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 3l14 9-14 9V3z"/></svg>
                       Test JSON
                     </button>
@@ -871,7 +827,7 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
                       <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
                         {extractedFields.map(f => (
                           <button key={f} onClick={() => { navigator.clipboard?.writeText(f); }}
-                            className="text-[9px] px-1.5 py-0.5 rounded-full bg-white dark:bg-[#1a1d27] border border-[#e5e7eb] dark:border-[#2d3140] text-soc-stext dark:text-soc-darkstext hover:bg-[#3b82f6] hover:text-white dark:hover:bg-[#3b82f6] transition-colors font-mono">
+                            className="text-[9px] px-1.5 py-0.5 rounded-full bg-white dark:bg-[#1a1d27] border border-[#e5e7eb] dark:border-[#2d3140] text-soc-stext dark:text-soc-darkstext hover:bg-[#EF843C] hover:text-white dark:hover:bg-[#EF843C] transition-colors font-mono">
                             {f}
                           </button>
                         ))}
@@ -975,13 +931,13 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
 
               <div className={`fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-[#16181f]/95 backdrop-blur border-t border-[#e5e7eb] dark:border-[#2d3140] px-3 sm:px-5 py-3 flex items-center gap-2 sm:gap-3 z-10 shadow-[0_-1px_3px_rgba(0,0,0,0.05)] ${selectedRuleIds.length > 0 ? 'hidden' : ''}`}
                 style={{ marginLeft: sidebarOpen ? undefined : 0 }}>
-                <button onClick={handleSave} className="gbtn text-xs flex items-center gap-1.5 bg-[#3b82f6] text-white hover:bg-[#2563eb] active:bg-[#1d4ed8] shadow-sm px-3 sm:px-4 transition-all"
+                <button onClick={handleSave} className="gbtn text-xs flex items-center gap-1.5 bg-[#EF843C] text-white hover:bg-[#e0752a] active:bg-[#c85a14] shadow-sm px-3 sm:px-4 transition-all"
                   title="Ctrl+S">
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 13l4 4L19 7"/></svg>
                   <span className="hidden sm:inline">Save</span>
                 </button>
                 <button onClick={() => { toggleRuleEnabled(editing.id); patch({ enabled: !editing.enabled }) }}
-                  className={`gbtn text-xs px-3 sm:px-4 transition-all ${editing.enabled ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 border border-amber-200 dark:border-amber-800/40' : 'bg-[#3b82f6] text-white hover:bg-[#2563eb]'}`}>
+                  className={`gbtn text-xs px-3 sm:px-4 transition-all ${editing.enabled ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 border border-amber-200 dark:border-amber-800/40' : 'bg-[#EF843C] text-white hover:bg-[#e0752a]'}`}>
                   {editing.enabled ? 'Disable' : 'Enable'}
                 </button>
                 <button onClick={handleDelete} className="gbtn text-xs flex items-center gap-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 border border-transparent hover:border-red-200 dark:hover:border-red-800/40 px-3 sm:px-4 transition-all">
@@ -997,8 +953,23 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
                 )}
               </div>
             </motion.div>
+            )}
+            </div>
+          </ResizableSplitter>
+        ) : (
+          <div className="flex-1 overflow-y-auto p-3 sm:p-5">
+            {!editing ? (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center h-full text-sm text-[#9ca3af] gap-3">
+              <svg className="w-12 h-12 opacity-30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              <span>Select a rule or create a new one</span>
+            </motion.div>
+          ) : (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl mx-auto space-y-4 sm:space-y-5 pb-28">
+              {editingContent}
+            </motion.div>
           )}
-        </div>
+          </div>
+        )}
       </div>
       <GroupBulkActions
         selectedRuleIds={selectedRuleIds}
@@ -1023,7 +994,7 @@ export default function RuleBuilder({ filterGroupIds = [], onGroupFilterChange }
                 <button onClick={cancelSave}
                   className="gbtn text-xs px-3 py-1.5 bg-[#f3f4f6] dark:bg-[#2d3140] hover:bg-[#e5e7eb] dark:hover:bg-[#374151] transition-colors">Cancel</button>
                 <button onClick={() => doSave(saveComment)}
-                  className="gbtn text-xs px-4 py-1.5 bg-[#3b82f6] text-white hover:bg-[#2563eb] transition-colors">Save</button>
+                  className="gbtn text-xs px-4 py-1.5 bg-[#EF843C] text-white hover:bg-[#e0752a] transition-colors">Save</button>
               </div>
             </motion.div>
           </motion.div>

@@ -32,7 +32,7 @@ export default function RulesTab() {
           <button key={t.key} onClick={() => setSubTab(t.key)}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
               subTab === t.key
-                ? 'bg-[#3b82f6]/10 text-[#3b82f6] shadow-sm'
+                ? 'bg-[#EF843C]/10 text-[#EF843C] shadow-sm'
                 : 'text-[#6b7280] dark:text-[#9ca3af] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140]'
             }`}>
             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d={t.icon}/></svg>
@@ -50,11 +50,9 @@ export default function RulesTab() {
               <button key={g.id} onClick={() => toggleGroupFilter(g.id)}
                 className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-medium transition-all whitespace-nowrap ${
                   active
-                    ? 'text-white shadow-sm'
+                    ? 'bg-[#324059] text-white shadow-sm'
                     : 'bg-[#f3f4f6] dark:bg-[#2d3140] text-[#6b7280] dark:text-[#9ca3af] hover:bg-[#e5e7eb] dark:hover:bg-[#374151]'
-                }`}
-                style={active ? { backgroundColor: g.color } : {}}>
-                <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ backgroundColor: active ? 'white' : g.color }} />
+                }`}>
                 {g.name}
               </button>
             )

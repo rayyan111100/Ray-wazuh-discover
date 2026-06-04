@@ -88,7 +88,7 @@ function ToastItem({ toast, onDismiss, onUndo }) {
   const styleMap = {
     success: { border: '#22c55e', bg: '#f0fdf4', darkBg: '#052e16', text: '#16a34a', darkText: '#86efac', icon: 'M20 6L9 17l-5-5' },
     error: { border: '#ef4444', bg: '#fef2f2', darkBg: '#450a0a', text: '#dc2626', darkText: '#fca5a5', icon: 'M18 6L6 18M6 6l12 12' },
-    info: { border: '#3b82f6', bg: '#eff6ff', darkBg: '#0c1929', text: '#2563eb', darkText: '#93c5fd', icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+    info: { border: '#EF843C', bg: '#eff6ff', darkBg: '#0c1929', text: '#e0752a', darkText: '#93c5fd', icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
     warning: { border: '#f59e0b', bg: '#fffbeb', darkBg: '#1c1400', text: '#d97706', darkText: '#fde047', icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z' }
   }
   const s = styleMap[toast.type] || styleMap.info

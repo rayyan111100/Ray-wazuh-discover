@@ -42,7 +42,7 @@ export default function DecoderTab() {
   const fetchArchives = useCallback(async () => {
     setLoading(true)
     try {
-      const params = { index: 'wazuh-archives-4.x-*', limit, sort: '@timestamp', order: 'desc' }
+      const params = { index: 'unishield360-archives-4.x-*', limit, sort: '@timestamp', order: 'desc' }
       if (query.trim()) params.q = query.trim()
       const d = await api('search', params)
       const results = d.results || []
@@ -152,7 +152,7 @@ export default function DecoderTab() {
         </select>
         <button onClick={fetchArchives} disabled={loading}
           className={`px-2.5 py-1 text-xs font-semibold rounded transition-all whitespace-nowrap shrink-0 ${loading ? 'bg-soc-stext/30 text-white cursor-not-allowed' : 'gbtn-primary'}`}>
-          {loading ? '\u23F3' : '\u27F3'}
+          {loading ? <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> : <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>}
         </button>
       </div>
 
@@ -163,13 +163,13 @@ export default function DecoderTab() {
               Logs <span className="text-[#9ca3af]">({logs.length})</span>
             </span>
             {logs.length > 0 && (
-              <button onClick={handleDecodeAll} className="text-[10px] px-2 py-0.5 rounded bg-[#3b82f6] text-white hover:bg-[#2563eb] transition-all">
+              <button onClick={handleDecodeAll} className="text-[10px] px-2 py-0.5 rounded bg-[#EF843C] text-white hover:bg-[#e0752a] transition-all">
                 Decode All
               </button>
             )}
           </div>
           <div className="max-h-[500px] overflow-y-auto">
-            {loading && <div className="p-4 text-xs text-center text-soc-stext dark:text-soc-darkstext">{'\u23F3'} Loading...</div>}
+            {loading && <div className="p-4 text-xs text-center text-soc-stext dark:text-soc-darkstext"><svg className="w-3 h-3 inline animate-spin mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Loading...</div>}
             {!loading && logs.length === 0 && <div className="p-4 text-xs text-center text-soc-stext/50 dark:text-soc-darkstext/50">No logs. Click search to fetch.</div>}
             {logs.map(log => {
               const isSelected = selectedIdx === log.index
@@ -198,8 +198,8 @@ export default function DecoderTab() {
                                   Copy All Fields
                                 </button>
                                 <button onClick={handleCreateRule}
-                                  className="text-[9px] px-1.5 py-0.5 rounded bg-[#3b82f6] text-white hover:bg-[#2563eb] transition-all">
-                                  \u2795 Rule
+                                  className="text-[9px] px-1.5 py-0.5 rounded bg-[#EF843C] text-white hover:bg-[#e0752a] transition-all">
+                                  + Rule
                                 </button>
                               </>
                             )}
@@ -219,7 +219,7 @@ export default function DecoderTab() {
                                     decoded.{key}
                                     {copyMsg === `decoded.${key}` && <span className="ml-1 text-green-500">\u2713</span>}
                                   </button>
-                                  <span className={`text-[10px] break-all ${txt2}`}>{displayVal.length > 200 ? displayVal.slice(0, 200) + '\u2026' : displayVal}</span>
+                                  <span className={`text-[10px] break-all ${txt2}`}>{displayVal.length > 200 ? displayVal.slice(0, 200) + '...' : displayVal}</span>
                                 </div>
                               )
                             })}
@@ -233,7 +233,7 @@ export default function DecoderTab() {
                         <div className="px-3 py-2 space-y-1">
                           <div className="flex items-center gap-2">
                             <button onClick={() => setShowRaw(false)}
-                              className="text-[9px] px-1.5 py-0.5 rounded bg-[#3b82f6] text-white hover:bg-[#2563eb] transition-all">
+                              className="text-[9px] px-1.5 py-0.5 rounded bg-[#EF843C] text-white hover:bg-[#e0752a] transition-all">
                               Decoded View
                             </button>
                             <span className="text-[10px] text-[#9ca3af]">Raw full_log</span>

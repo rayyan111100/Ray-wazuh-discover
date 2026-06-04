@@ -15,7 +15,7 @@ function FilterBtns({ field, value }) {
   const h = (negate) => { addFilter(field, value, negate); doSearch() }
   return (
     <span className="cell-filters">
-      <button onClick={e => { e.stopPropagation(); h(false) }} className="p-0.5 hover:text-[#1a73e8] dark:hover:text-[#8ab4f8]" title="Filter for">
+      <button onClick={e => { e.stopPropagation(); h(false) }} className="p-0.5 hover:text-[#EF843C] dark:hover:text-[#EF843C]" title="Filter for">
         <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path fillRule="evenodd" d="M8 7h3.5a.5.5 0 1 1 0 1H8v3.5a.5.5 0 1 1-1 0V8H3.5a.5.5 0 0 1 0-1H7V3.5a.5.5 0 0 1 1 0V7Z"/></svg>
       </button>
       <button onClick={e => { e.stopPropagation(); h(true) }} className="p-0.5 hover:text-red-500" title="Filter out">
@@ -42,7 +42,7 @@ function getFieldType(v) {
 const TYPE_TOKENS = {
   string:  { icon: 'T',   color: '#7b7b7b' },
   number:  { icon: '#',   color: '#e5830e' },
-  boolean: { icon: '\u2713', color: '#1ea59a' },
+  boolean: { icon: '✓', color: '#1ea59a' },
   date:    { icon: 'D',   color: '#b77c4f' },
   ip:      { icon: 'IP',  color: '#8b5cf6' },
   object:  { icon: '{}',  color: '#7b7b7b' },
@@ -90,21 +90,35 @@ function DocViewer({ doc }) {
   const hExists = (field) => { addFilter(field, '__exists__', false); doSearch() }
 
   const handleCreateRule = () => {
-    const paths = extractFieldPaths(doc).filter(p => !p.startsWith('_') && p !== 'id' && !p.startsWith('@'))
-    const valFields = paths.slice(0, 10)
-    const conditions = valFields.map(p => ({
-      id: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-      field: p,
-      operator: 'equals',
-      value: String(p.split('.').reduce((o, k) => o?.[k], doc) ?? '')
-    }))
+    const allPaths = extractFieldPaths(doc)
+    const leafPaths = allPaths.filter(p => {
+      if (p.startsWith('_') || p === 'id' || p.startsWith('@')) return false
+      const resolved = p.split('.').reduce((o, k) => o?.[k], doc)
+      return resolved !== null && resolved !== undefined && typeof resolved !== 'object' && !Array.isArray(resolved)
+    })
+    const valFields = leafPaths.slice(0, 15)
+    const conditions = valFields.map(p => {
+      const resolved = p.split('.').reduce((o, k) => o?.[k], doc)
+      const strVal = String(resolved ?? '')
+      let operator = 'equals'
+      if (strVal.length > 80) operator = 'contains'
+      else if (p.includes('path') || p.includes('name') || p.includes('command') || p.includes('message')) operator = 'contains'
+      return { id: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), field: p, operator, value: strVal, logic: 'AND' }
+    })
     try {
       const stored = JSON.parse(sessionStorage.getItem('ruleFields') || '[]')
-      const merged = [...new Set([...stored, ...paths])].sort((a, b) => a.localeCompare(b))
+      const merged = [...new Set([...stored, ...allPaths])].sort((a, b) => a.localeCompare(b))
       sessionStorage.setItem('ruleFields', JSON.stringify(merged))
     } catch {}
     try {
-      const rule = createRule({ name: 'From event' })
+      const rule = createRule({
+        name: 'From event',
+        actions: [{ type: 'alert', params: {
+          severity: doc.rule?.level >= 12 ? 'critical' : doc.rule?.level >= 7 ? 'high' : 'medium',
+          level: doc.rule?.level || 5,
+          message: doc.rule?.description || 'Alert matched custom rule'
+        }}]
+      })
       const patched = { ...rule, conditions }
       updateRule(rule.id, patched)
       setPendingRuleId(rule.id)
@@ -112,8 +126,12 @@ function DocViewer({ doc }) {
     setTab('rules')
   }
 
+  const handleCopyJson = () => {
+    navigator.clipboard.writeText(JSON.stringify(doc, null, 2))
+  }
+
   const actionBtn = (onClick, title, svg, color = 'text-soc-stext dark:text-soc-darkstext') => (
-    <button onClick={onClick} className={`p-0.5 rounded hover:bg-[#1a73e8]/15 ${color} hover:text-[#1a73e8] dark:hover:text-[#8ab4f8] transition-colors`} title={title}>
+    <button onClick={onClick} className={`p-0.5 rounded hover:bg-[#EF843C]/15 ${color} hover:text-[#EF843C] dark:hover:text-[#EF843C] transition-colors`} title={title}>
       {svg}
     </button>
   )
@@ -121,10 +139,11 @@ function DocViewer({ doc }) {
   return (
     <div className={`border-t ${isDark ? 'border-soc-darkborder' : 'border-soc-border'}`}>
       <div className="flex border-b border-soc-border/50 dark:border-soc-darkborder/50">
-        <button onClick={() => setView('table')} className={`px-3 py-1 text-xs font-medium border-b-2 transition-colors ${view === 'table' ? 'border-[#1a73e8] text-[#1a73e8] dark:border-[#8ab4f8] dark:text-[#8ab4f8]' : 'border-transparent text-soc-stext dark:text-soc-darkstext'}`}>Table</button>
-        <button onClick={() => setView('json')} className={`px-3 py-1 text-xs font-medium border-b-2 transition-colors ${view === 'json' ? 'border-[#1a73e8] text-[#1a73e8] dark:border-[#8ab4f8] dark:text-[#8ab4f8]' : 'border-transparent text-soc-stext dark:text-soc-darkstext'}`}>JSON</button>
-        <span className="ml-auto flex items-center pr-1">
-          <button onClick={handleCreateRule} className="px-2 py-0.5 text-[10px] font-medium rounded bg-[#3b82f6] text-white hover:bg-[#2563eb] transition-all" title="Create rule from this event">{'\u2795'} Rule</button>
+        <button onClick={() => setView('table')} className={`px-3 py-1 text-xs font-medium border-b-2 transition-colors ${view === 'table' ? 'border-[#EF843C] text-[#EF843C] dark:border-[#EF843C] dark:text-[#EF843C]' : 'border-transparent text-soc-stext dark:text-soc-darkstext'}`}>Table</button>
+        <button onClick={() => setView('json')} className={`px-3 py-1 text-xs font-medium border-b-2 transition-colors ${view === 'json' ? 'border-[#EF843C] text-[#EF843C] dark:border-[#EF843C] dark:text-[#EF843C]' : 'border-transparent text-soc-stext dark:text-soc-darkstext'}`}>JSON</button>
+        <span className="ml-auto flex items-center gap-1 pr-1">
+          <button onClick={handleCopyJson} className="px-2 py-0.5 text-[10px] font-medium rounded bg-[#e8eaed] dark:bg-[#374151] text-soc-stext dark:text-soc-darkstext hover:bg-[#d1d5db] dark:hover:bg-[#4b5563] transition-all" title="Copy document as JSON">JSON</button>
+          <button onClick={handleCreateRule} className="px-2 py-0.5 text-[10px] font-medium rounded bg-[#EF843C] text-white hover:bg-[#e0752a] transition-all" title="Create rule from this event">+ Rule</button>
         </span>
       </div>
       <div className="max-h-72 overflow-y-auto">
@@ -138,7 +157,7 @@ function DocViewer({ doc }) {
                   <tr key={i} className={`border-b group hover:bg-soc-bg/50 dark:hover:bg-soc-darkbg/50 ${isDark ? 'border-soc-darkborder/30' : 'border-soc-border/30'}`}>
                     <td className="px-3 py-1 font-medium text-soc-stext dark:text-soc-darkstext whitespace-nowrap w-1/3 align-top">
                       <span className="inline-flex items-center gap-1.5">
-                        <span className="flex items-center justify-center shrink-0" style={{ width: 18, height: 18, borderRadius: 3, border: `1px solid ${tok.color}40`, color: tok.color, fontSize: 9, fontWeight: 700, lineHeight: 1 }}>{tok.icon}</span>
+                        <span className="flex items-center justify-center shrink-0" style={{ width: 18, height: 18, borderRadius: 3, border: `1px solid ${tok.color}40`, color: tok.color, fontSize: 9, fontWeight: 600, lineHeight: 1, fontFamily: 'monospace' }}>{tok.icon}</span>
                         <span className="truncate">{fld.path}</span>
                       </span>
                     </td>
@@ -173,20 +192,10 @@ function DocViewer({ doc }) {
   )
 }
 
-function RuleBadge({ severity, name, groupNames, groupColors }) {
-  const cls = ({
-    critical: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 ring-1 ring-red-400/30',
-    high: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 ring-1 ring-orange-400/30',
-    medium: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300 ring-1 ring-yellow-400/30',
-    low: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 ring-1 ring-green-400/30',
-    info: 'bg-gray-100 text-gray-600 dark:bg-gray-800/40 dark:text-gray-400 ring-1 ring-gray-400/20'
-  })[severity] || ''
+function RuleBadge({ severity, name, groupNames }) {
   return (
-    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap ${cls}`}>
-      {groupColors?.slice(0, 2).map((c, i) => (
-        <span key={i} className="inline-block w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: c }} />
-      ))}
-      <span className="shrink-0">{'\u2699'}</span>
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap bg-[#f3f4f6] dark:bg-[#2d3140] text-[#6b7280] dark:text-[#9ca3af]">
+      <svg className="w-3 h-3 shrink-0 text-[#9ca3af]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       <span className="truncate max-w-[120px]">{name}</span>
       {groupNames?.slice(0, 1).map((gn, i) => (
         <span key={i} className="text-[8px] opacity-70 hidden sm:inline">({gn})</span>
@@ -253,11 +262,11 @@ export default function ResultsTable({ ruleMatches = null, groupMap = null, resu
     document.addEventListener('mousedown', handleClick); return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  if (error) return <div className="p-3 text-xs text-red-500 bg-red-50 dark:bg-red-900/20 rounded border border-red-200 dark:border-red-800">{'\u274C'} {error}</div>
-  if (loading && !results.length) return <div className="p-4 text-xs text-center text-soc-stext dark:text-soc-darkstext">{'\u23F3'} Searching...</div>
+  if (error) return <div className="p-3 text-xs text-red-500 bg-red-50 dark:bg-red-900/20 rounded border border-red-200 dark:border-red-800">{error}</div>
+  if (loading && !results.length) return <div className="p-4 text-xs text-center text-soc-stext dark:text-soc-darkstext">Searching...</div>
   if (!results.length) return (
     <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-      <span className="text-4xl block mb-3">{filters && filters.length > 0 ? '\uD83D\uDD0D' : '\uD83D\uDCED'}</span>
+      <svg className="w-10 h-10 mx-auto mb-3 text-soc-stext/30 dark:text-soc-darkstext/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
       <h3 className="text-lg font-medium mb-2">
         {filters && filters.length > 0 ? 'No results match your filters' : 'No data available'}
       </h3>
@@ -282,7 +291,7 @@ export default function ResultsTable({ ruleMatches = null, groupMap = null, resu
         <span className="text-soc-stext/50 dark:text-soc-darkstext/50">({shownStart}&ndash;{shownEnd} of {total.toLocaleString()})</span>
         <div className="fields-dropdown relative">
           <button onClick={() => { setFieldsOpen(o => !o); loadFields() }}
-            className="inline-flex items-center gap-1 text-[10px] font-medium text-[#1a73e8] dark:text-[#8ab4f8] hover:underline">
+            className="inline-flex items-center gap-1 text-[10px] font-medium text-[#EF843C] dark:text-[#EF843C] hover:underline">
             <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
             Fields <span className="text-soc-stext/50 dark:text-soc-darkstext/50">({fields.length})</span>
           </button>
@@ -322,16 +331,16 @@ export default function ResultsTable({ ruleMatches = null, groupMap = null, resu
                   onDragOver={e => handleDragOver(e, c)}
                   onDragEnd={handleDragEnd}
                   onDrop={() => handleDrop(c)}
-                  className={`p-0 border-b border-soc-border dark:border-soc-darkborder select-none ${isOver ? 'border-t-2 border-t-[#1a73e8] dark:border-t-[#8ab4f8]' : ''} ${dragCol === c ? 'opacity-40' : ''}`}>
+                  className={`p-0 border-b border-soc-border dark:border-soc-darkborder select-none ${isOver ? 'border-t-2 border-t-[#EF843C] dark:border-t-[#EF843C]' : ''} ${dragCol === c ? 'opacity-40' : ''}`}>
                   <div className="th-wrap flex items-center gap-1 px-1.5 py-1 cursor-grab active:cursor-grabbing">
-                    <span className="font-semibold text-[#1a73e8] dark:text-[#8ab4f8] cursor-pointer text-xxs" onClick={() => toggleColumn(c)}>{c}</span>
+                    <span className="font-semibold text-[#EF843C] dark:text-[#EF843C] cursor-pointer text-xxs" onClick={() => toggleColumn(c)}>{c}</span>
                     <span className="th-actions flex items-center gap-0.5 ml-auto">
                       <span className="th-act text-[9px]" onClick={() => doSort(c)} title="Sort">
-                        {sortField === c ? (sortOrder === 'asc' ? '\u25B2' : '\u25BC') : '\u25B4\u25BE'}
+                        {sortField === c ? (sortOrder === 'asc' ? <svg className="w-2.5 h-2.5 inline" viewBox="0 0 24 24" fill="currentColor"><polyline points="18 15 12 9 6 15"/></svg> : <svg className="w-2.5 h-2.5 inline" viewBox="0 0 24 24" fill="currentColor"><polyline points="6 9 12 15 18 9"/></svg>) : <svg className="w-2.5 h-2.5 inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 5h10M11 9h7M11 13h4"/><path d="M3 5l3 3M3 5l3-3"/><path d="M6 19l-3 3M6 19l3 3"/></svg>}
                       </span>
-                      <span className="th-act text-[9px]" onClick={() => moveColumn(c, -1)} title="Left">{'\u25C0'}</span>
-                      <span className="th-act text-[9px]" onClick={() => moveColumn(c, 1)} title="Right">{'\u25B6'}</span>
-                      <span className="th-act th-act-danger text-[9px]" onClick={() => toggleColumn(c)} title="Remove">{'\u2715'}</span>
+                      <span className="th-act text-[9px]" onClick={() => moveColumn(c, -1)} title="Left"><svg className="w-2.5 h-2.5 inline" viewBox="0 0 24 24" fill="currentColor"><polyline points="15 18 9 12 15 6"/></svg></span>
+                      <span className="th-act text-[9px]" onClick={() => moveColumn(c, 1)} title="Right"><svg className="w-2.5 h-2.5 inline" viewBox="0 0 24 24" fill="currentColor"><polyline points="9 18 15 12 9 6"/></svg></span>
+                      <span className="th-act th-act-danger text-[9px]" onClick={() => toggleColumn(c)} title="Remove"><svg className="w-2.5 h-2.5 inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg></span>
                     </span>
                   </div>
                 </th>
@@ -359,14 +368,14 @@ export default function ResultsTable({ ruleMatches = null, groupMap = null, resu
                     className={`cursor-pointer border-b border-soc-border/50 dark:border-soc-darkborder/50 hover:bg-soc-bg/50 dark:hover:bg-soc-darkbg/50 transition-colors ${highlightClass}`}
                   >
                     <td className="px-1 py-1 text-center text-[10px] text-soc-stext dark:text-soc-darkstext">
-                      {match ? <span className="text-purple-500 mr-0.5" title={`Rule: ${match.ruleName}`}>{'\u2699'}</span> : null}
-                      {isExp ? '\u25BC' : '\u25B6'}
+                      {match ? <svg className="w-3 h-3 inline text-purple-500 mr-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> : null}
+                      {isExp ? '▾' : '▸'}
                     </td>
                     {columns.map(c => {
                       if (c === 'Rule') {
                         return (
                           <td key="Rule" className="px-1.5 py-1">
-                            {match ? <RuleBadge severity={match.severity} name={match.ruleName} groupNames={match.groupNames} groupColors={match.groupColors} /> : <span className="text-soc-stext/40 dark:text-soc-darkstext/40">{'\u2014'}</span>}
+                            {match ? <RuleBadge severity={match.severity} name={match.ruleName} groupNames={match.groupNames} /> : <span className="text-soc-stext/40 dark:text-soc-darkstext/40">-</span>}
                           </td>
                         )
                       }
@@ -376,7 +385,7 @@ export default function ResultsTable({ ruleMatches = null, groupMap = null, resu
                       if (c === 'rule.description' && match?.message) {
                         disp = <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-purple-500 shrink-0" title="Rule override" />{match.message}</span>
                       } else if (c === '@timestamp' || c === 'timestamp') disp = <span className="text-soc-stext dark:text-soc-darkstext text-xxs">{raw.slice(0, 19)}</span>
-                      else { let x = raw; if (x.length > 100) x = x.slice(0, 100) + '\u2026'; disp = x || '\u2014' }
+                      else { let x = raw; if (x.length > 100) x = x.slice(0, 100) + '...'; disp = x || '-' }
                       return (
                         <td key={c} className={`px-1.5 py-1 relative overflow-hidden text-ellipsis whitespace-nowrap ${c === 'rule.description' || c === 'full_log' ? 'min-w-[100px] max-w-[400px]' : c === '@timestamp' || c === 'timestamp' ? 'min-w-[130px] max-w-[160px]' : 'min-w-[70px] max-w-[180px]'}`}>
                           <span className="cell-val-wrap relative">
@@ -428,13 +437,17 @@ export default function ResultsTable({ ruleMatches = null, groupMap = null, resu
               disabled={page <= 1}
               className="px-1.5 py-0.5 rounded text-[10px] font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:bg-soc-bg dark:hover:bg-soc-darkbg transition-colors"
               title="First page"
-            >{'|\u25C0'}</button>
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+            </button>
             <button
               onClick={() => goToPage(page - 1)}
               disabled={page <= 1}
               className="px-1.5 py-0.5 rounded text-[10px] font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:bg-soc-bg dark:hover:bg-soc-darkbg transition-colors"
               title="Previous page"
-            >{'\u25C0'}</button>
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
             {(() => {
               const pages = []
               const maxVisible = 7
@@ -454,7 +467,7 @@ export default function ResultsTable({ ruleMatches = null, groupMap = null, resu
                     title={`Go to page ${p}`}
                     className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
                       p === page
-                        ? 'bg-[#1a73e8] text-white dark:bg-[#8ab4f8] dark:text-[#1a1d27]'
+                        ? 'bg-[#EF843C] text-white dark:bg-[#EF843C] dark:text-white'
                         : 'hover:bg-soc-bg dark:hover:bg-soc-darkbg text-soc-stext dark:text-soc-darkstext'
                     }`}
                   >{p}</button>
@@ -466,7 +479,9 @@ export default function ResultsTable({ ruleMatches = null, groupMap = null, resu
               disabled={page >= totalPages}
               className="px-1.5 py-0.5 rounded text-[10px] font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:bg-soc-bg dark:hover:bg-soc-darkbg transition-colors"
               title="Next page"
-            >{'\u25B6'}</button>
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
           </div>
         </div>
       )}

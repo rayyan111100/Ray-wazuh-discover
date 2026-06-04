@@ -5,3 +5,6 @@ screenshots.mjs
 capture.ps1
 screenshots.cjs
 server-run.log
+data/
+*.db
+scripts/

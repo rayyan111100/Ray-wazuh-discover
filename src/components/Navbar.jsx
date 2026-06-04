@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react'
 import { useApp } from '../context/AppContext'
 import { jsPDF } from 'jspdf'
 import { autoTable } from 'jspdf-autotable'
+import useRealtime from '../hooks/useRealtime'
+import { useAuth } from '../context/AuthContext'
+import NotificationSettings from './NotificationSettings'
 
 const Btn = ({ onClick, title, children, active }) => (
   <button onClick={onClick} title={title}
     className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-all duration-150 border border-transparent
       ${active
-        ? 'bg-[#1a73e8]/10 text-[#1a73e8] dark:bg-[#8ab4f8]/15 dark:text-[#8ab4f8] border-[#1a73e8]/20 dark:border-[#8ab4f8]/20 shadow-sm'
-        : 'text-soc-stext/80 dark:text-soc-darkstext/80 hover:bg-white/60 dark:hover:bg-[#2d3140]/60 hover:border-soc-border/50 dark:hover:border-soc-darkborder/50 hover:text-soc-text dark:hover:text-soc-darktext'
+        ? 'bg-[#EF843C]/10 text-[#EF843C] dark:bg-[#EF843C]/15 dark:text-[#EF843C] border-[#EF843C]/20 dark:border-[#EF843C]/20 shadow-sm'
+        : 'text-soc-stext/80 dark:text-soc-darkstext/80 hover:bg-white/60 dark:hover:bg-[#2a3042]/60 hover:border-soc-border/50 dark:hover:border-soc-darkborder/50 hover:text-soc-text dark:hover:text-soc-darktext'
       }`}>
     {children}
   </button>
@@ -36,6 +39,10 @@ export default function Navbar() {
   const [showInspect, setShowInspect] = useState(false)
   const [saveName, setSaveName] = useState('')
   const [savedList, setSavedList] = useState([])
+  const [showAlerts, setShowAlerts] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
+  const { user, setShowLogin, logout, hasRole } = useAuth()
+  const rt = useRealtime(true)
 
   useEffect(() => {
     const t = setInterval(() => setLiveTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })), 1000)
@@ -46,7 +53,7 @@ export default function Navbar() {
     if (showOpen) setSavedList(JSON.parse(localStorage.getItem('savedFilters') || '[]'))
   }, [showOpen])
 
-  const handleNew = () => { setDql(''); clearAllFilters(); doSearch() }
+  const handleNew = () => { setDql(''); clearAllFilters(); setTimeout(() => doSearch(), 0) }
 
   const handleSave = () => {
     if (!saveName.trim()) return
@@ -60,10 +67,10 @@ export default function Navbar() {
     setShowOpen(false)
     if (!sf.filters?.length && !sf.dql) return
     clearAllFilters()
-    if (sf.dql) setDql(sf.dql)
+    setDql(sf.dql || '')
     if (sf.filterMatch) setFilterMatch(sf.filterMatch)
     ;(sf.filters || []).forEach(f => addFilter(f.field, f.value, f.negate, f.operator, f.params))
-    doSearch()
+    setTimeout(() => doSearch(), 0)
   }
 
   const handleShare = async () => {
@@ -85,7 +92,7 @@ export default function Navbar() {
     const csv = '\uFEFF' + [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
-    const a = document.createElement('a'); a.href = url; a.download = `wazuh-results-${Date.now()}.csv`; a.click()
+    const a = document.createElement('a'); a.href = url; a.download = `unishield360-results-${Date.now()}.csv`; a.click()
     URL.revokeObjectURL(url)
     setShowReport(false)
   }
@@ -99,7 +106,7 @@ export default function Navbar() {
         return v !== null && v !== undefined ? String(v) : ''
       }))
       doc.setFontSize(8)
-      doc.text(`Wazuh SOC - Results Report (${new Date().toLocaleString()})`, 14, 10)
+      doc.text(`UniShield SOC - Results Report (${new Date().toLocaleString()})`, 14, 10)
       autoTable(doc, {
         head: [columns],
         body,
@@ -109,7 +116,7 @@ export default function Navbar() {
         alternateRowStyles: { fillColor: [245, 245, 250] },
         margin: { top: 14 }
       })
-      doc.save(`wazuh-results-${Date.now()}.pdf`)
+      doc.save(`unishield360-results-${Date.now()}.pdf`)
       setShowReport(false)
     } catch (e) { console.error('PDF download failed:', e) }
   }
@@ -124,13 +131,13 @@ export default function Navbar() {
   return (
     <header className="gcard rounded-none flex items-center justify-between px-4 h-11 shrink-0 border-b border-soc-border/50 dark:border-soc-darkborder/50">
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1.5">
-          <svg className="w-5 h-5 text-soc-blue" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-          </svg>
-          <span className="text-sm font-bold text-soc-blue tracking-tight">Wazuh</span>
+        <div className="flex items-center gap-2">
+          <img src="https://unishield360.com/wp-content/uploads/2024/08/Unishield-logo-Favicon-e1723102667824.png"
+            alt="UniShield" className="w-6 h-6 rounded-full ring-1 ring-soc-accent/30" />
+          <span className="text-sm font-bold text-soc-text tracking-tight">UniShield</span>
         </div>
-        <span className="text-[9px] font-semibold text-soc-stext/60 dark:text-soc-darkstext/60 bg-soc-bg dark:bg-soc-darkbg px-1.5 py-0.5 rounded uppercase tracking-wider">SOC</span>
+        <a href="https://unishield360.com" target="_blank" rel="noopener noreferrer"
+          className="text-[9px] font-semibold text-soc-accent bg-soc-accent/10 dark:bg-soc-accent/15 px-1.5 py-0.5 rounded uppercase tracking-wider hover:bg-soc-accent/20 transition-colors">SOC</a>
         <Divider />
         <span className="text-[11px] font-medium text-soc-stext/70 dark:text-soc-darkstext/70 capitalize">{tab}</span>
       </div>
@@ -152,9 +159,9 @@ export default function Navbar() {
               <div className="text-[9px] font-semibold uppercase tracking-wider text-soc-stext/40 dark:text-soc-darkstext/40 mb-1.5">Save Search</div>
               <input autoFocus value={saveName} onChange={e => setSaveName(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') handleSave() }}
-                placeholder="Enter a name..." className="w-full px-2.5 py-1.5 text-[11px] bg-[#f3f4f6] dark:bg-[#2d3140] rounded-md outline-none text-soc-text dark:text-soc-darktext placeholder:text-soc-stext/30 dark:placeholder:text-soc-darkstext/30 border border-transparent focus:border-[#1a73e8]/30 dark:focus:border-[#8ab4f8]/30 transition-colors" />
+                placeholder="Enter a name..." className="w-full px-2.5 py-1.5 text-[11px] bg-[#f1f3f4] dark:bg-[#2a3042] rounded-md outline-none text-soc-text dark:text-soc-darktext placeholder:text-soc-stext/30 dark:placeholder:text-soc-darkstext/30 border border-transparent focus:border-[#EF843C]/30 dark:focus:border-[#EF843C]/30 transition-colors" />
               <button onClick={handleSave}
-                className="w-full mt-1.5 px-2.5 py-1.5 text-[11px] font-medium rounded-md bg-[#1a73e8] text-white hover:bg-[#1557b0] dark:bg-[#8ab4f8] dark:text-[#1a1d27] dark:hover:bg-[#7aa9f0] transition-all shadow-sm">
+                className="w-full mt-1.5 px-2.5 py-1.5 text-[11px] font-medium rounded-md bg-[#EF843C] text-white hover:bg-[#e0752a] dark:bg-[#EF843C] dark:text-white dark:hover:bg-[#e0752a] transition-all shadow-sm">
                 Save
               </button>
             </div>
@@ -177,7 +184,7 @@ export default function Navbar() {
                   <span className="flex-1 text-[11px] text-soc-stext dark:text-soc-darkstext truncate">{sf.name}</span>
                   <span className="text-[9px] text-soc-stext/30 dark:text-soc-darkstext/30">{new Date(sf.date).toLocaleDateString()}</span>
                   <button onClick={e => { e.stopPropagation(); if (confirm('Delete this saved search?')) handleDeleteSaved(i) }}
-                    className="ml-1 text-[9px] text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">{'\u2715'}</button>
+                    className="ml-1 text-[9px] text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"><svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
                 </div>
               ))}
             </div>
@@ -201,6 +208,61 @@ export default function Navbar() {
           Inspect
         </Btn>
 
+        <div className="relative">
+          <button onClick={() => setShowAlerts(s => !s)}
+            className={`relative p-1.5 rounded-md transition-colors ${rt.connected ? 'text-soc-stext/80 dark:text-soc-darkstext/80 hover:bg-white/60 dark:hover:bg-[#2d3140]/60' : 'text-red-400'}`}
+            title={rt.connected ? `${rt.matches.length} alerts matched` : 'Realtime disconnected'}>
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+            {rt.matches.length > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 flex items-center justify-center bg-red-500 text-white text-[7px] font-bold rounded-full">{rt.matches.length > 99 ? '99+' : rt.matches.length}</span>
+            )}
+          </button>
+          <Dropdown show={showAlerts} onClose={() => setShowAlerts(false)} width={320}>
+            <div className="p-2.5">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-[9px] font-semibold uppercase tracking-wider text-soc-stext/40 dark:text-soc-darkstext/40">
+                  Real-time {rt.connected ? <span className="text-green-500 ml-1">●</span> : <span className="text-red-500 ml-1">●</span>}
+                </div>
+                <div className="flex items-center gap-2 text-[9px] text-soc-stext/50 dark:text-soc-darkstext/50">
+                  <span>Alerts: {rt.stats.alertCount}</span>
+                  <span>Matches: {rt.stats.matchCount}</span>
+                </div>
+              </div>
+              {rt.matches.length === 0 ? (
+                <div className="text-[10px] text-soc-stext/40 dark:text-soc-darkstext/40 italic text-center py-4">Waiting for alerts...</div>
+              ) : (
+                <div className="max-h-64 overflow-y-auto space-y-1">
+                  {rt.matches.slice(0, 30).map((m, i) => (
+                    <div key={m.id || i} className="flex items-start gap-2 px-2 py-1.5 rounded-md bg-[#f8f9fa] dark:bg-[#252832] text-[10px]">
+                      <div className={`w-1.5 h-1.5 rounded-full mt-0.5 shrink-0 ${
+                        m.matches?.[0]?.severity === 'critical' ? 'bg-red-500' :
+                        m.matches?.[0]?.severity === 'high' ? 'bg-orange-500' :
+                        m.matches?.[0]?.severity === 'medium' ? 'bg-yellow-500' : 'bg-blue-500'
+                      }`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-medium text-soc-text dark:text-soc-darktext truncate">{m.matches?.[0]?.ruleName || 'Unknown'}</span>
+                          <span className="text-soc-stext/40 dark:text-soc-darkstext/40">on</span>
+                          <span className="text-soc-stext dark:text-soc-darkstext truncate">{m.agent}</span>
+                        </div>
+                        <div className="text-soc-stext/40 dark:text-soc-darkstext/40">
+                          {m.rule} · {m.decoded_format || '-'}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {rt.matches.length > 0 && (
+                <button onClick={() => { rt.clearMatches(); setShowAlerts(false) }}
+                  className="mt-2 w-full text-center text-[9px] py-1.5 text-soc-stext/50 dark:text-soc-darkstext/50 hover:text-soc-text dark:hover:text-soc-darktext transition-colors rounded-md hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140]">
+                  Clear ({rt.matches.length})
+                </button>
+              )}
+            </div>
+          </Dropdown>
+        </div>
+
         <Divider />
 
         <div className="flex items-center gap-1 pl-1">
@@ -215,8 +277,33 @@ export default function Navbar() {
               : <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
             }
           </button>
+
+          {user ? (
+            <div className="flex items-center gap-1">
+              {hasRole('admin') && (
+                <button onClick={() => setShowNotifications(true)} title="Notification settings"
+                  className="p-1.5 rounded-md hover:bg-white/60 dark:hover:bg-[#2d3140]/60 transition-colors text-soc-stext/60 dark:text-soc-darkstext/60 hover:text-soc-text dark:hover:text-soc-darktext">
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                </button>
+              )}
+              <button onClick={logout} title="Sign out"
+                className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-white/60 dark:hover:bg-[#2d3140]/60 transition-colors">
+                <div className="w-5 h-5 rounded-full bg-[#EF843C]/10 dark:bg-[#EF843C]/10 flex items-center justify-center text-[9px] font-bold text-[#EF843C] dark:text-[#EF843C] uppercase">
+                  {user.displayName?.[0] || user.username?.[0] || 'U'}
+                </div>
+                <span className="text-[9px] text-soc-stext/70 dark:text-soc-darkstext/70 hidden sm:inline">{user.displayName || user.username}</span>
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => setShowLogin(true)} title="Sign in"
+              className="p-1.5 rounded-md hover:bg-white/60 dark:hover:bg-[#2d3140]/60 transition-colors text-soc-stext/60 dark:text-soc-darkstext/60">
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M13 12H3"/></svg>
+            </button>
+          )}
         </div>
       </div>
+
+      {showNotifications && <NotificationSettings onClose={() => setShowNotifications(false)} />}
 
       {showReport && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowReport(false)}>
@@ -245,7 +332,7 @@ export default function Navbar() {
           <div className="bg-white dark:bg-[#1a1d27] rounded-xl shadow-2xl border border-[#e5e7eb] dark:border-[#2d3140] p-5 max-w-lg w-full mx-4 max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <svg className="w-4 h-4 text-[#1a73e8] dark:text-[#8ab4f8]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                <svg className="w-4 h-4 text-[#EF843C] dark:text-[#EF843C]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
                 <h3 className="text-sm font-semibold text-soc-text dark:text-soc-darktext">Inspect</h3>
               </div>
               <button onClick={() => setShowInspect(false)} className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] text-soc-stext/50 hover:text-soc-text dark:hover:text-soc-darktext transition-colors">&times;</button>
@@ -254,7 +341,7 @@ export default function Navbar() {
               <div className="bg-[#f8f9fa] dark:bg-[#252832] rounded-lg p-3">
                 <div className="text-[9px] font-semibold uppercase tracking-wider text-soc-stext/40 dark:text-soc-darkstext/40 mb-2">API Request</div>
                 <div className="space-y-1 text-soc-text dark:text-soc-darktext">
-                  <div><span className="text-[#1a73e8] dark:text-[#8ab4f8]">GET</span> /api/search</div>
+                  <div><span className="text-[#EF843C] dark:text-[#EF843C]">GET</span> /api/search</div>
                   <div className="pl-4 text-soc-stext/70 dark:text-soc-darkstext/70">limit: 50</div>
                   <div className="pl-4 text-soc-stext/70 dark:text-soc-darkstext/70">offset: {(0).toLocaleString()}</div>
                   <div className="pl-4 text-soc-stext/70 dark:text-soc-darkstext/70">sort: @timestamp</div>
@@ -265,7 +352,7 @@ export default function Navbar() {
               <div className="bg-[#f8f9fa] dark:bg-[#252832] rounded-lg p-3">
                 <div className="text-[9px] font-semibold uppercase tracking-wider text-soc-stext/40 dark:text-soc-darkstext/40 mb-2">Response</div>
                 <div className="space-y-1 text-soc-text dark:text-soc-darktext">
-                  <div>total: <span className="font-semibold text-[#1a73e8] dark:text-[#8ab4f8]">{total.toLocaleString()}</span></div>
+                  <div>total: <span className="font-semibold text-[#EF843C] dark:text-[#EF843C]">{total.toLocaleString()}</span></div>
                   <div>returned: <span className="font-semibold">{results.length}</span></div>
                   <div>columns: {columns.length}</div>
                 </div>
@@ -277,7 +364,7 @@ export default function Navbar() {
                     {filters.map((f, i) => (
                       <div key={i} className="flex items-center gap-1.5 text-[10px] text-soc-stext dark:text-soc-darkstext">
                         {f.negate && <span className="text-red-500 font-medium">NOT</span>}
-                        <span className="text-[#1a73e8] dark:text-[#8ab4f8]">{f.field}</span>
+                        <span className="text-[#EF843C] dark:text-[#EF843C]">{f.field}</span>
                         <span className="text-soc-stext/40 dark:text-soc-darkstext/40">{f.operator || 'is'}</span>
                         <span className="font-medium truncate max-w-[120px]">{f.value}</span>
                       </div>

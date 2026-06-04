@@ -13,7 +13,7 @@ function ConfirmDialog({ open, title, message, confirmLabel, onConfirm, onCancel
         <p className="text-xs text-[#6b7280] dark:text-[#9ca3af] mb-4">{message}</p>
         <div className="flex justify-end gap-2">
           <button onClick={onCancel} className="gbtn text-xs px-3 py-1.5 bg-[#f3f4f6] dark:bg-[#2d3140] hover:bg-[#e5e7eb] dark:hover:bg-[#374151] transition-colors">Cancel</button>
-          <button onClick={onConfirm} className={`gbtn text-xs px-3 py-1.5 transition-colors ${confirmLabel?.includes('Delete') ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-[#3b82f6] text-white hover:bg-[#2563eb]'}`}>{confirmLabel || 'Confirm'}</button>
+          <button onClick={onConfirm} className={`gbtn text-xs px-3 py-1.5 transition-colors ${confirmLabel?.includes('Delete') ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-[#EF843C] text-white hover:bg-[#e0752a]'}`}>{confirmLabel || 'Confirm'}</button>
         </div>
       </div>
     </div>
@@ -323,13 +323,13 @@ export default function GroupBulkActions({
                   {allSelected ? <><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></> : <><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></>}
                 </svg>
               </button>
-              <span className="font-semibold text-soc-stext dark:text-soc-darkstext whitespace-nowrap"><span className="text-[#3b82f6]">{selectedRuleIds.length}</span> selected</span>
+              <span className="font-semibold text-soc-stext dark:text-soc-darkstext whitespace-nowrap"><span className="text-[#EF843C]">{selectedRuleIds.length}</span> selected</span>
             </div>
             <div className="h-5 w-px bg-[#e5e7eb] dark:bg-[#2d3140]" />
 
             <div className="relative">
               <button onClick={() => setOpenDropdown(openDropdown === 'add' ? null : 'add')} disabled={busy}
-                className={`gbtn text-xs px-2 py-1.5 flex items-center gap-1 transition-all ${openDropdown === 'add' ? 'bg-[#3b82f6]/10 text-[#3b82f6]' : 'bg-[#f3f4f6] dark:bg-[#2d3140] hover:bg-[#e5e7eb] dark:hover:bg-[#374151] text-[#6b7280] dark:text-[#9ca3af]'} ${busy ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                className={`gbtn text-xs px-2 py-1.5 flex items-center gap-1 transition-all ${openDropdown === 'add' ? 'bg-[#EF843C]/10 text-[#EF843C]' : 'bg-[#f3f4f6] dark:bg-[#2d3140] hover:bg-[#e5e7eb] dark:hover:bg-[#374151] text-[#6b7280] dark:text-[#9ca3af]'} ${busy ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
                 <span className="hidden sm:inline">Group+</span>
               </button>
@@ -338,14 +338,14 @@ export default function GroupBulkActions({
                   {groups.length === 0 && <div className="px-3 py-2 text-[10px] text-[#9ca3af] italic">No groups</div>}
                   {groups.map(g => (
                     <label key={g.id} className="flex items-center gap-2 px-3 py-1.5 text-[10px] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] cursor-pointer">
-                      <input type="checkbox" checked={addToGroupIds.includes(g.id)} onChange={() => toggleAddGroup(g.id)} className="w-3 h-3 rounded border-[#d1d5db] dark:border-[#4b5563] text-[#3b82f6]" />
-                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: g.color }} /> {g.name}
+                      <input type="checkbox" checked={addToGroupIds.includes(g.id)} onChange={() => toggleAddGroup(g.id)} className="w-3 h-3 rounded border-[#d1d5db] dark:border-[#4b5563] text-[#EF843C]" />
+                      {g.name}
                     </label>
                   ))}
                   {groups.length > 0 && (
                     <div className="border-t border-[#e5e7eb] dark:border-[#2d3140] px-2 py-1.5">
                       <button onClick={handleAddToGroup} disabled={addToGroupIds.length === 0 || busy}
-                        className="w-full text-center text-[9px] py-1 rounded-md bg-[#3b82f6] text-white hover:bg-[#2563eb] disabled:opacity-40 font-medium">Add to {addToGroupIds.length} group{addToGroupIds.length !== 1 ? 's' : ''}</button>
+                        className="w-full text-center text-[9px] py-1 rounded-md bg-[#EF843C] text-white hover:bg-[#e0752a] disabled:opacity-40 font-medium">Add to {addToGroupIds.length} group{addToGroupIds.length !== 1 ? 's' : ''}</button>
                     </div>
                   )}
                 </div>
@@ -356,7 +356,7 @@ export default function GroupBulkActions({
               <>
                 <div className="relative">
                   <button onClick={() => setOpenDropdown(openDropdown === 'move' ? null : 'move')} disabled={busy}
-                    className={`gbtn text-xs px-2 py-1.5 flex items-center gap-1 transition-all ${openDropdown === 'move' ? 'bg-[#3b82f6]/10 text-[#3b82f6]' : 'bg-[#f3f4f6] dark:bg-[#2d3140] hover:bg-[#e5e7eb] dark:hover:bg-[#374151] text-[#6b7280] dark:text-[#9ca3af]'} ${busy ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    className={`gbtn text-xs px-2 py-1.5 flex items-center gap-1 transition-all ${openDropdown === 'move' ? 'bg-[#EF843C]/10 text-[#EF843C]' : 'bg-[#f3f4f6] dark:bg-[#2d3140] hover:bg-[#e5e7eb] dark:hover:bg-[#374151] text-[#6b7280] dark:text-[#9ca3af]'} ${busy ? 'opacity-50 cursor-not-allowed' : ''}`}>
                     <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 17l4 4 4-4M8 7l4-4 4-4"/><path d="M12 3v18"/></svg>
                     <span className="hidden sm:inline">Move</span>
                   </button>
@@ -366,7 +366,7 @@ export default function GroupBulkActions({
                       {groups.filter(g => g.id !== groupId).map(g => (
                         <button key={g.id} onClick={() => handleMoveToGroup(g.id)} disabled={busy}
                           className="w-full text-left px-3 py-1.5 text-[10px] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: g.color }} /> {g.name}</button>
+                          {g.name}</button>
                       ))}
                     </div>
                   )}
@@ -425,7 +425,7 @@ export default function GroupBulkActions({
                     </div>
                   )}
                   <div className="flex gap-1">
-                    <button onClick={() => handleTag('add')} className="gbtn text-[9px] px-2 py-1 bg-[#3b82f6] text-white rounded hover:bg-[#2563eb]">Add</button>
+                    <button onClick={() => handleTag('add')} className="gbtn text-[9px] px-2 py-1 bg-[#EF843C] text-white rounded hover:bg-[#e0752a]">Add</button>
                     <button onClick={() => handleTag('remove')} className="gbtn text-[9px] px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600">Remove</button>
                   </div>
                 </div>
@@ -454,7 +454,7 @@ export default function GroupBulkActions({
 
             {busy && progress.total > 0 && (
               <div className="w-16 h-1.5 bg-[#f3f4f6] dark:bg-[#2d3140] rounded-full overflow-hidden shrink-0">
-                <div className="h-full bg-[#3b82f6] rounded-full transition-all duration-200" style={{ width: `${(progress.current / progress.total) * 100}%` }} />
+                <div className="h-full bg-[#EF843C] rounded-full transition-all duration-200" style={{ width: `${(progress.current / progress.total) * 100}%` }} />
               </div>
             )}
 
@@ -495,7 +495,7 @@ export default function GroupBulkActions({
             <input className="ginput w-full text-xs py-2 px-3" placeholder="e.g. new-value" value={replaceValue} onChange={e => setReplaceValue(e.target.value)} /></div>
           <div className="flex justify-end gap-2 pt-1">
             <button onClick={() => setShowFindReplace(false)} className="gbtn text-xs px-3 py-1.5 bg-[#f3f4f6] dark:bg-[#2d3140] hover:bg-[#e5e7eb] dark:hover:bg-[#374151]">Cancel</button>
-            <button onClick={handleFindReplace} className="gbtn text-xs px-4 py-1.5 bg-[#3b82f6] text-white hover:bg-[#2563eb]">Replace All</button>
+            <button onClick={handleFindReplace} className="gbtn text-xs px-4 py-1.5 bg-[#EF843C] text-white hover:bg-[#e0752a]">Replace All</button>
           </div>
         </div>
       </Modal>
@@ -521,7 +521,7 @@ export default function GroupBulkActions({
             value={testJson} onChange={e => { setTestJson(e.target.value); setTestResults(null) }} />
           <div className="flex justify-end">
             <button onClick={handleTest} disabled={!testJson.trim()}
-              className="gbtn text-xs px-4 py-1.5 bg-[#3b82f6] text-white hover:bg-[#2563eb] disabled:opacity-40">Test All Selected</button>
+              className="gbtn text-xs px-4 py-1.5 bg-[#EF843C] text-white hover:bg-[#e0752a] disabled:opacity-40">Test All Selected</button>
           </div>
           {testResults && (
             <div className="border border-[#e5e7eb] dark:border-[#2d3140] rounded-lg overflow-hidden max-h-48 overflow-y-auto">

@@ -45,7 +45,7 @@ export default function FieldSidebar() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search field names"
-            className="w-full pl-6 pr-2 py-1 text-xs border border-[#dadce0] dark:border-[#3c4043] rounded bg-white dark:bg-[#1a1a1a] text-[#202124] dark:text-[#e8eaed] placeholder-[#5f6368] dark:placeholder-[#9aa0a6] outline-none focus:border-[#1a73e8] dark:focus:border-[#8ab4f8] transition-colors"
+            className="w-full pl-6 pr-2 py-1 text-xs border border-[#dadce0] dark:border-[#3c4043] rounded bg-white dark:bg-[#1a1a1a] text-[#202124] dark:text-[#e8eaed] placeholder-[#5f6368] dark:placeholder-[#9aa0a6] outline-none focus:border-[#EF843C] dark:focus:border-[#EF843C] transition-colors"
           />
         </div>
         <div className="flex items-center gap-1">
@@ -72,7 +72,7 @@ export default function FieldSidebar() {
             {selected.map(f => (
               <div key={f.name} onClick={() => toggleColumn(f.name)}
                 className={`flex items-center justify-between px-2.5 py-0.5 cursor-pointer text-xs ${hover} transition-colors`}>
-                <span className="text-[#1a73e8] dark:text-[#8ab4f8] font-medium truncate">{f.name}</span>
+                <span className="text-[#EF843C] dark:text-[#EF843C] font-medium truncate">{f.name}</span>
                 <span className={`text-[10px] ${txt} shrink-0`}>column</span>
               </div>
             ))}

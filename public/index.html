@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Wazuh SOC Dashboard</title>
+<title>UniShield360 SOC Dashboard</title>
 <style>
 :root{--bg:#0f1923;--bg2:#1a2633;--bg3:#0d151e;--text:#e0e0e0;--text2:#78909c;--border:#263238;--accent:#00bcd4;--hover:#263238;--card-border:#00bcd4;--tbl-hover:#1a2633}
 [data-theme="light"]{--bg:#f5f5f5;--bg2:#ffffff;--bg3:#e8e8e8;--text:#212121;--text2:#757575;--border:#bdbdbd;--accent:#00838f;--hover:#e0e0e0;--card-border:#00838f;--tbl-hover:#f0f0f0}
@@ -123,7 +123,7 @@ td.osdDocViewer__field{padding:4px 8px}
 <body>
 
 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-<div><h1>Wazuh SOC Dashboard</h1><span class="sub" id="healthBadge">● checking...</span></div>
+<div><h1>UniShield360 SOC Dashboard</h1><span class="sub" id="healthBadge">● checking...</span></div>
 <div class="theme-switch">
   <button onclick="setTheme('dark')" id="tDark">🌙 Dark</button>
   <button onclick="setTheme('system')" id="tSys">💻 System</button>
@@ -201,9 +201,9 @@ td.osdDocViewer__field{padding:4px 8px}
     <div class="disc-fields" id="dFields">
       <div class="dfs-source">
         <select id="dIndex" onchange="discoverSearch()">
-          <option>wazuh-alerts-4.x-*</option>
-          <option>wazuh-alerts-*</option>
-          <option>wazuh-archives-*</option>
+          <option>unishield360-alerts-4.x-*</option>
+          <option>unishield360-alerts-*</option>
+          <option>unishield360-archives-*</option>
         </select>
         <button class="dfs-refresh" onclick="discoverSearch()" title="Refresh">↻</button>
       </div>
@@ -251,7 +251,7 @@ td.osdDocViewer__field{padding:4px 8px}
 <div class="panel" id="panel-search">
   <div class="custom-inputs">
     <div style="flex:1"><label>DQL Query</label><input id="dql" placeholder='rule.level:[12 TO 15] OR data.win.system.eventID:"4625"' style="width:100%"/></div>
-    <div><label>Index</label><select id="sIdx"><option>wazuh-alerts-4.x-*</option></select></div>
+    <div><label>Index</label><select id="sIdx"><option>unishield360-alerts-4.x-*</option></select></div>
     <div><label>Limit</label><input id="sLimit" value="50" style="width:60px"/></div>
     <button class="all" onclick="dqlSearch()">🔍 Search</button>
   </div>
@@ -493,7 +493,7 @@ async function discoverLoadFields(){
   }catch(e){document.getElementById('dFields').innerHTML=`<div class="dfs-source">${dsHTML()}</div><div class="dfs-title">Available Fields</div><div class="error">${e.message}</div>`}
 }
 
-function dsHTML(){const v=document.getElementById('dIndex')?.value||'wazuh-alerts-4.x-*';return `<select id="dIndex" onchange="discoverSearch()"><option ${v==='wazuh-alerts-4.x-*'?'selected':''}>wazuh-alerts-4.x-*</option><option ${v==='wazuh-alerts-*'?'selected':''}>wazuh-alerts-*</option><option ${v==='wazuh-archives-*'?'selected':''}>wazuh-archives-*</option></select><button class="dfs-refresh" onclick="discoverSearch()" title="Refresh">↻</button>`}
+function dsHTML(){const v=document.getElementById('dIndex')?.value||'unishield360-alerts-4.x-*';return `<select id="dIndex" onchange="discoverSearch()"><option ${v==='unishield360-alerts-4.x-*'?'selected':''}>unishield360-alerts-4.x-*</option><option ${v==='unishield360-alerts-*'?'selected':''}>unishield360-alerts-*</option><option ${v==='unishield360-archives-*'?'selected':''}>unishield360-archives-*</option></select><button class="dfs-refresh" onclick="discoverSearch()" title="Refresh">↻</button>`}
 
 function renderFields(fields){
   const sel=document.getElementById('dFields')

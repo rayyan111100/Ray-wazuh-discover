@@ -92,7 +92,7 @@ export default function DateRangePicker() {
   const txt = isDark ? 'text-soc-darkstext' : 'text-soc-stext'
   const btn = isDark ? 'border-soc-darkborder text-soc-darkstext hover:bg-soc-darkborder/50' : 'border-soc-border text-soc-stext hover:bg-soc-bg'
   const tabCls = 'px-3 py-1.5 text-xs font-medium border-b-2 cursor-pointer transition-colors ' + (isDark ? 'text-soc-darkstext border-transparent hover:text-soc-darktext' : 'text-soc-stext border-transparent hover:text-soc-text')
-  const tabAct = 'px-3 py-1.5 text-xs font-medium border-b-2 cursor-pointer transition-colors ' + (isDark ? 'text-[#8ab4f8] border-[#8ab4f8]' : 'text-[#1a73e8] border-[#1a73e8]')
+  const tabAct = 'px-3 py-1.5 text-xs font-medium border-b-2 cursor-pointer transition-colors ' + (isDark ? 'text-[#EF843C] border-[#EF843C]' : 'text-[#EF843C] border-[#EF843C]')
 
   const cells = getCal(calYear, calMonth)
   const today = new Date()
@@ -121,7 +121,7 @@ export default function DateRangePicker() {
         className={`flex items-center gap-1.5 px-2.5 py-1 text-xs border border-soc-border dark:border-soc-darkborder rounded whitespace-nowrap transition-colors bg-white dark:bg-[#2d2d2d] text-soc-darktext dark:text-soc-darktext`}
       >
         <span className="font-medium">{label}</span>
-        <span className={`text-[10px] ${txt}`}>{open ? '\u25B2' : '\u25BC'}</span>
+        <span className={`text-[10px] ${txt}`}>{open ? <svg className="w-2.5 h-2.5 inline" viewBox="0 0 24 24" fill="currentColor"><polyline points="18 15 12 9 6 15"/></svg> : <svg className="w-2.5 h-2.5 inline" viewBox="0 0 24 24" fill="currentColor"><polyline points="6 9 12 15 18 9"/></svg>}</span>
       </button>
       <AnimatePresence>
         {open && (
@@ -156,7 +156,7 @@ export default function DateRangePicker() {
                   <div className="text-xs font-medium text-[#5f6368] dark:text-[#9aa0a6] uppercase tracking-wide mb-2">Commonly used</div>
                   <div className="grid grid-cols-2 gap-x-2">
                     {COMMON.map((c, i) => (
-                      <button key={i} onClick={() => apply(c)} className={`text-left px-2 py-1 text-xs rounded transition-colors ${isDark ? 'text-[#8ab4f8] hover:bg-soc-darkborder/50' : 'text-[#1a73e8] hover:bg-soc-bg'}`}>
+                      <button key={i} onClick={() => apply(c)} className={`text-left px-2 py-1 text-xs rounded transition-colors ${isDark ? 'text-[#EF843C] hover:bg-soc-darkborder/50' : 'text-[#EF843C] hover:bg-soc-bg'}`}>
                         {c.label}
                       </button>
                     ))}
@@ -174,9 +174,9 @@ export default function DateRangePicker() {
                 <div className="flex gap-3">
                   <div className="flex-1 min-w-0">
                     <div className={`flex items-center justify-between mb-1 ${txt}`}>
-                      <button onClick={() => { if (calMonth === 0) { setCalYear(y => y - 1); setCalMonth(11) } else setCalMonth(m => m - 1) }} className="px-2 py-0.5 rounded hover:bg-[#1a73e8]/20 transition-colors text-xs">{'\u25C0'}</button>
+                      <button onClick={() => { if (calMonth === 0) { setCalYear(y => y - 1); setCalMonth(11) } else setCalMonth(m => m - 1) }} className="px-2 py-0.5 rounded hover:bg-[#EF843C]/20 transition-colors text-xs"><svg className="w-2.5 h-2.5 inline" viewBox="0 0 24 24" fill="currentColor"><polyline points="15 18 9 12 15 6"/></svg></button>
                       <span className="text-xs font-semibold">{MONTHS[calMonth]} {calYear}</span>
-                      <button onClick={() => { if (calMonth === 11) { setCalYear(y => y + 1); setCalMonth(0) } else setCalMonth(m => m + 1) }} className="px-2 py-0.5 rounded hover:bg-[#1a73e8]/20 transition-colors text-xs">{'\u25B6'}</button>
+                      <button onClick={() => { if (calMonth === 11) { setCalYear(y => y + 1); setCalMonth(0) } else setCalMonth(m => m + 1) }} className="px-2 py-0.5 rounded hover:bg-[#EF843C]/20 transition-colors text-xs"><svg className="w-2.5 h-2.5 inline" viewBox="0 0 24 24" fill="currentColor"><polyline points="9 18 15 12 9 6"/></svg></button>
                     </div>
                     <div className="grid grid-cols-7 gap-0">
                       {DAYS.map(d => <div key={d} className={`text-center text-[10px] font-semibold py-0.5 ${txt}`}>{d}</div>)}
@@ -187,8 +187,8 @@ export default function DateRangePicker() {
                         const isT = sameDay(cd, today)
                         const isSel = sameDay(cd, selDate)
                         const cls = `text-center text-xs py-0.5 rounded transition-colors cursor-pointer ${
-                          isSel ? 'bg-[#1a73e8] text-white font-semibold' :
-                          isT ? (isDark ? 'bg-blue-500/20 text-[#8ab4f8] font-semibold' : 'bg-blue-100 text-[#1a73e8] font-semibold') :
+                          isSel ? 'bg-[#EF843C] text-white font-semibold' :
+                          isT ? (isDark ? 'bg-blue-500/20 text-[#EF843C] font-semibold' : 'bg-blue-100 text-[#EF843C] font-semibold') :
                           cell.other ? (isDark ? 'text-soc-darkstext/40' : 'text-soc-stext/40') :
                           (isDark ? 'text-soc-darktext hover:bg-soc-darkborder/50' : 'text-soc-text hover:bg-soc-bg')
                         }`
@@ -216,8 +216,8 @@ export default function DateRangePicker() {
                       {timeSlots.map(t => (
                         <button key={t} data-sel={t === selTime ? '1' : '0'} onClick={() => setSelTime(t)}
                           className={`block w-full text-center text-xs py-0.5 rounded transition-colors ${
-                            t === selTime ? 'bg-[#1a73e8] text-white font-semibold' :
-                            t === nowTime ? (isDark ? 'text-[#8ab4f8]' : 'text-[#1a73e8]') :
+                            t === selTime ? 'bg-[#EF843C] text-white font-semibold' :
+                            t === nowTime ? (isDark ? 'text-[#EF843C]' : 'text-[#EF843C]') :
                             (isDark ? 'text-soc-darkstext hover:bg-soc-darkborder/50' : 'text-soc-stext hover:bg-soc-bg')
                           }`}
                         >{t}</button>
@@ -234,7 +234,7 @@ export default function DateRangePicker() {
 
             {tab === 'now' && (
               <div className="p-5 text-center space-y-3">
-                <div className="text-lg">\uD83D\uDD50</div>
+                <div className="text-lg"><svg className="w-6 h-6 inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
                 <div className={`text-sm font-medium ${txt}`}>Set start and end to now</div>
                 <div className="flex justify-center gap-2">
                   <button onClick={() => setOpen(false)} className={`px-3 py-1 text-xs border rounded transition-colors ${btn}`}>Cancel</button>

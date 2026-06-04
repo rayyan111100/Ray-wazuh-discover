@@ -60,7 +60,7 @@ export function restoreGroups(data) {
     if (existingIds.has(g.id)) {
       updateGroup(g.id, {
         name: g.name, description: g.description || '',
-        color: g.color || '#3b82f6', createdAt: g.createdAt
+        color: g.color, createdAt: g.createdAt
       })
     } else {
       createGroup({ ...g, id: g.id })
