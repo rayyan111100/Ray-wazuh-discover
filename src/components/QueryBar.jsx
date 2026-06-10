@@ -85,7 +85,7 @@ function FilterChip({ filter, onEdit, onRemove, onToggle, onToggleDisabled, onTo
       } ${pinned ? 'ring-1 ring-purple-400 dark:ring-purple-600' : ''}`}
       title={`${disabled ? '[Disabled] ' : ''}${pinned ? '[Pinned] ' : ''}${isNeg ? 'NOT ' : ''}${filter.field} ${opLabel} ${displayVal || ''}`}
     >
-      {pinned && <span className="text-[8px] mr-0.5" title="Pinned">{'\uD83D\uDCCC'}</span>}
+      {pinned && <span className="text-[8px] mr-0.5" title="Pinned"><svg className="w-2.5 h-2.5 inline-block" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2z"/></svg></span>}
       <span className="flex items-center gap-0.5 cursor-pointer" onClick={() => onEdit?.(filter)}>
         {isNeg && <span className="font-bold text-[9px] uppercase mr-0.5">NOT</span>}
         <span className="max-w-[90px] truncate">{filter.customLabel || filter.field}</span>
@@ -106,24 +106,24 @@ function FilterChip({ filter, onEdit, onRemove, onToggle, onToggleDisabled, onTo
         )}
         <button onClick={e => { e.stopPropagation(); onToggleDisabled?.(filter.id) }}
           className={`w-3.5 h-3.5 flex items-center justify-center rounded hover:bg-black/10 dark:hover:bg-white/10 font-bold leading-none text-[9px] transition-colors ${disabled ? 'text-green-500' : 'text-soc-stext dark:text-soc-darkstext'}`}
-          title={disabled ? 'Enable' : 'Disable'}>{disabled ? '\u25B6' : '\u23F8'}</button>
+          title={disabled ? 'Enable' : 'Disable'}>{disabled ? <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> : <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>}</button>
         <button onClick={e => { e.stopPropagation(); onTogglePin?.(filter.id) }}
           className={`w-3.5 h-3.5 flex items-center justify-center rounded hover:bg-black/10 dark:hover:bg-white/10 text-[9px] transition-colors ${pinned ? 'text-purple-500' : 'text-soc-stext dark:text-soc-darkstext'}`}
-          title={pinned ? 'Unpin' : 'Pin'}>{'\uD83D\uDCCC'}</button>
+          title={pinned ? 'Unpin' : 'Pin'}><svg className="w-2.5 h-2.5 inline-block" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2z"/></svg></button>
         <button onClick={e => { e.stopPropagation(); onInvert?.(filter.id) }}
           className="w-3.5 h-3.5 flex items-center justify-center rounded hover:bg-black/10 dark:hover:bg-white/10 text-[9px] transition-colors"
-          title="Invert">{'\uD83D\uDD04'}</button>
+          title="Invert"><svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg></button>
         <div className="relative">
           <button onClick={e => { e.stopPropagation(); setShowMenu(!showMenu) }}
             className="w-3.5 h-3.5 flex items-center justify-center rounded hover:bg-black/10 dark:hover:bg-white/10 text-[9px] transition-colors"
-            title="More">{'\u22EF'}</button>
+            title="More">...</button>
           {showMenu && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
               <div className="absolute top-full right-0 mt-1 z-50 bg-white dark:bg-[#1a1d27] border border-[#e5e7eb] dark:border-[#2d3140] rounded shadow-lg py-1 min-w-[130px]">
-                <button onClick={handleCopyDql} className="w-full text-left px-2.5 py-1 text-[10px] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] text-soc-stext dark:text-soc-darkstext transition-colors whitespace-nowrap">{'\uD83D\uDCCB'} Copy DQL</button>
-                <button onClick={e => { e.stopPropagation(); onSaveFilter?.(filter); setShowMenu(false) }} className="w-full text-left px-2.5 py-1 text-[10px] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] text-soc-stext dark:text-soc-darkstext transition-colors whitespace-nowrap">{'\uD83D\uDCBE'} Save as filter</button>
-                <button onClick={e => { e.stopPropagation(); onRemove(filter.id); setShowMenu(false) }} className="w-full text-left px-2.5 py-1 text-[10px] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] text-red-500 transition-colors whitespace-nowrap">{'\u2716'} Remove</button>
+                <button onClick={handleCopyDql} className="w-full text-left px-2.5 py-1 text-[10px] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] text-soc-stext dark:text-soc-darkstext transition-colors whitespace-nowrap"><svg className="w-3 h-3 inline-block mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg> Copy DQL</button>
+                <button onClick={e => { e.stopPropagation(); onSaveFilter?.(filter); setShowMenu(false) }} className="w-full text-left px-2.5 py-1 text-[10px] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] text-soc-stext dark:text-soc-darkstext transition-colors whitespace-nowrap"><svg className="w-3 h-3 inline-block mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg> Save as filter</button>
+                <button onClick={e => { e.stopPropagation(); onRemove(filter.id); setShowMenu(false) }} className="w-full text-left px-2.5 py-1 text-[10px] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] text-red-500 transition-colors whitespace-nowrap"><svg className="w-3 h-3 inline-block mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg> Remove</button>
               </div>
             </>
           )}
@@ -323,7 +323,7 @@ export default function QueryBar() {
           <button
             onClick={() => setShowSavedFilters(!showSavedFilters)}
             className="text-xs text-soc-stext dark:text-soc-darkstext p-0.5 hover:opacity-70 shrink-0"
-            title="Saved queries">{'\uD83D\uDCC2'}</button>
+            title="Saved queries"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg></button>
           <AnimatePresence>
             {showSavedFilters && (
               <motion.div
@@ -343,20 +343,20 @@ export default function QueryBar() {
                           <span className="text-[8px] text-[#9ca3af] ml-1">({sf.filters?.length || 0} filters)</span>
                         </button>
                         <button onClick={() => { const n = prompt('Rename to:', sf.name); if (n && n.trim()) { const list = JSON.parse(localStorage.getItem('savedFilters') || '[]'); list[i].name = n.trim(); localStorage.setItem('savedFilters', JSON.stringify(list)) } }}
-                          className="opacity-0 group-hover:opacity-100 px-1 text-[9px] text-soc-stext dark:text-soc-darkstext hover:text-blue-500 transition-all">{'\u270F\uFE0F'}</button>
+                          className="opacity-0 group-hover:opacity-100 px-1 text-[9px] text-soc-stext dark:text-soc-darkstext hover:text-blue-500 transition-all"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
                         <button onClick={() => { if (confirm('Delete saved filter?')) handleDeleteSaved(i) }}
-                          className="opacity-0 group-hover:opacity-100 px-1 text-[9px] text-soc-stext dark:text-soc-darkstext hover:text-red-500 transition-all">{'\u2716'}</button>
+                          className="opacity-0 group-hover:opacity-100 px-1 text-[9px] text-soc-stext dark:text-soc-darkstext hover:text-red-500 transition-all"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
                       </div>
                     ))}
                   </div>
                 )}
                 <div className="border-t border-[#e5e7eb] dark:border-[#2d3140] mt-1.5 pt-1.5 flex gap-1">
                   <button onClick={() => { setSaveDialogOpen(true); setShowSavedFilters(false) }}
-                    className="flex-1 text-[9px] py-1 rounded text-[#1a73e8] dark:text-[#8ab4f8] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] transition-colors">{'\u2795'} Save current</button>
+                    className="flex-1 text-[9px] py-1 rounded text-[#EF843C] dark:text-[#EF843C] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] transition-colors"><svg className="w-3 h-3 inline-block mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Save current</button>
                   <button onClick={handleExport}
-                    className="text-[9px] px-2 py-1 rounded text-[#1a73e8] dark:text-[#8ab4f8] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] transition-colors">{'\u2B07\uFE0F'}</button>
+                    className="text-[9px] px-2 py-1 rounded text-[#EF843C] dark:text-[#EF843C] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] transition-colors" title="Export"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></button>
                   <button onClick={handleImport}
-                    className="text-[9px] px-2 py-1 rounded text-[#1a73e8] dark:text-[#8ab4f8] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] transition-colors">{'\u2B06\uFE0F'}</button>
+                    className="text-[9px] px-2 py-1 rounded text-[#EF843C] dark:text-[#EF843C] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] transition-colors" title="Import"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg></button>
                 </div>
               </motion.div>
             )}
@@ -369,7 +369,7 @@ export default function QueryBar() {
             value={dql}
             onChange={e => setDql(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Search \u2014 rule.level:>=12 OR agent.name:*"
+            placeholder="Search — rule.level:>=12 OR agent.name:*"
             className="flex-1 min-w-[60px] px-1.5 py-1 text-xs border-none outline-none rounded ginput"
           />
           <span className="text-[10px] font-semibold text-soc-stext dark:text-soc-darkstext uppercase px-1.5 py-0.5 rounded border border-soc-border dark:border-soc-darkborder shrink-0">DQL</span>
@@ -379,8 +379,7 @@ export default function QueryBar() {
             <button
               onClick={(e) => { e.stopPropagation(); setShowQuick(!showQuick) }}
               className="px-1 py-1 text-xs rounded text-soc-stext dark:text-soc-darkstext hover:bg-soc-border/30 dark:hover:bg-soc-darkborder/30"
-              title="Quick date select"
-            >{'\uD83D\uDCC5'}</button>
+              title="Quick date select"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
             <AnimatePresence>
               {showQuick && (
                 <motion.div
@@ -390,7 +389,7 @@ export default function QueryBar() {
                   <div className="text-xs font-medium text-[#5f6368] dark:text-[#9aa0a6] uppercase tracking-wide mb-1">Commonly used</div>
                   {COMMON.map((c, i) => (
                     <button key={i} onClick={() => applyQuick(c)}
-                      className="block w-full text-left px-2 py-1 text-xs rounded text-[#1a73e8] dark:text-[#8ab4f8] hover:bg-soc-border/30 dark:hover:bg-soc-darkborder/30"
+                      className="block w-full text-left px-2 py-1 text-xs rounded text-[#EF843C] dark:text-[#EF843C] hover:bg-soc-border/30 dark:hover:bg-soc-darkborder/30"
                     >{c.label}</button>
                   ))}
                 </motion.div>
@@ -402,16 +401,15 @@ export default function QueryBar() {
           <select value={limit} onChange={e => setLimit(parseInt(e.target.value))} className={'ginput px-1.5 py-1 text-xs w-12'}>
             <option>20</option><option>50</option><option>100</option><option>200</option><option>500</option>
           </select>
-          <select value={index} onChange={e => setIndex(e.target.value)} className={'ginput px-1.5 py-1 text-xs max-w-[120px] hidden md:block'} title="Index pattern">
-            <option value="wazuh-alerts-4.x-*">wazuh-alerts-4.x-*</option>
-            <option value="wazuh-alerts-*">wazuh-alerts-*</option>
-            <option value="*">* (all)</option>
+          <select value={index} onChange={e => setIndex(e.target.value)} className="ginput text-[10px] py-0.5 px-1 w-auto font-mono">
+            <option value="unishield360-alerts-4.x-*">Alerts</option>
+            <option value="unishield360-archives-4.x-*">Archives</option>
           </select>
           <button
             onClick={handleSearchClick}
             disabled={loading}
             className={`px-2 py-1 text-xs font-semibold rounded transition-all whitespace-nowrap ${loading ? 'bg-soc-stext/30 text-white cursor-not-allowed' : 'gbtn-primary'}`}
-          >{loading ? '\u23F3' : '\u27F3'}</button>
+          >{loading ? <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> : <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>}</button>
         </div>
       </div>
 
@@ -420,8 +418,7 @@ export default function QueryBar() {
           <button
             onClick={() => { setShowAddFilter(!showAddFilter); setEditingFilter(null) }}
             className={`px-1.5 py-0.5 text-[10px] border rounded ${bg} ${isDark ? 'text-soc-darkstext' : 'text-soc-stext'}`}
-            title="Add filter"
-          >{'\uD83D\uDD3D'}</button>
+            title="Add filter"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></button>
           <AnimatePresence>
             {showAddFilter && (
               <FilterEditor
@@ -488,7 +485,7 @@ export default function QueryBar() {
           ))}
         </AnimatePresence>
 
-        <button onClick={() => { setShowAddFilter(true); setEditingFilter(null) }} className="text-[10px] text-[#1a73e8] dark:text-[#8ab4f8] hover:underline px-1">+ Add filter</button>
+        <button onClick={() => { setShowAddFilter(true); setEditingFilter(null) }} className="text-[10px] text-[#EF843C] dark:text-[#EF843C] hover:underline px-1">+ Add filter</button>
 
         {filters.length > 0 && (
           <button onClick={() => {
@@ -514,13 +511,13 @@ export default function QueryBar() {
 
               <div className="flex items-center justify-between px-4 py-3 border-b border-[#e5e7eb] dark:border-[#2d3140] bg-gradient-to-r from-[#f9fafb] to-white dark:from-[#111318] dark:to-[#1a1d27]">
                 <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-md bg-gradient-to-br from-[#3b82f6] to-[#2563eb] flex items-center justify-center text-white text-xs">{'\uD83D\uDCBE'}</span>
+                  <span className="w-6 h-6 rounded-md bg-[#EF843C] flex items-center justify-center text-white text-xs"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg></span>
                   <span className="text-xs font-semibold text-[#202124] dark:text-[#e8eaed]">Saved Filters</span>
                   <span className="text-[9px] text-[#9ca3af] bg-[#f3f4f6] dark:bg-[#2d3140] px-1.5 py-0.5 rounded-full">{savedFilters.length}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button onClick={handleExport} className="w-6 h-6 flex items-center justify-center rounded text-[#9ca3af] hover:text-[#1a73e8] dark:hover:text-[#8ab4f8] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] transition-all text-[11px]" title="Export as JSON">{'\u2B07\uFE0F'}</button>
-                  <button onClick={handleImport} className="w-6 h-6 flex items-center justify-center rounded text-[#9ca3af] hover:text-[#1a73e8] dark:hover:text-[#8ab4f8] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] transition-all text-[11px]" title="Import from JSON">{'\u2B06\uFE0F'}</button>
+                  <button onClick={handleExport} className="w-6 h-6 flex items-center justify-center rounded text-[#9ca3af] hover:text-[#EF843C] dark:hover:text-[#EF843C] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] transition-all text-[11px]" title="Export as JSON"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></button>
+                  <button onClick={handleImport} className="w-6 h-6 flex items-center justify-center rounded text-[#9ca3af] hover:text-[#EF843C] dark:hover:text-[#EF843C] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] transition-all text-[11px]" title="Import from JSON"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg></button>
                   <button onClick={() => setSaveDialogOpen(false)} className="w-6 h-6 flex items-center justify-center rounded text-[#9ca3af] hover:text-[#202124] dark:hover:text-[#e8eaed] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] transition-all text-xs font-bold">&times;</button>
                 </div>
               </div>
@@ -532,12 +529,12 @@ export default function QueryBar() {
                       placeholder="Name your filter set..."
                       className="ginput w-full pl-7 pr-2 py-1.5 text-xs"
                       onKeyDown={e => e.key === 'Enter' && handleSaveFilterSet()} />
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[#9ca3af] text-[11px]">{'\uD83D\uDCC4'}</span>
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[#9ca3af] text-[11px]"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
                   </div>
                   <button onClick={handleSaveFilterSet}
                     disabled={!saveName.trim()}
-                    className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-gradient-to-r from-[#3b82f6] to-[#2563eb] text-white hover:from-[#2563eb] hover:to-[#1d4ed8] disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm shrink-0 flex items-center gap-1">
-                    <span>{'\u2795'}</span> Save
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#EF843C] text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm shrink-0 flex items-center gap-1">
+                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Save
                   </button>
                 </div>
               </div>
@@ -545,7 +542,7 @@ export default function QueryBar() {
               <div className="px-4 pb-3">
                 {savedFilters.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 text-[#9ca3af]">
-                    <span className="text-2xl mb-2 opacity-50">{'\uD83D\uDCED'}</span>
+                    <span className="text-2xl mb-2 opacity-50"><svg className="w-8 h-8 inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg></span>
                     <span className="text-[11px] font-medium">No saved filters yet</span>
                     <span className="text-[10px] mt-0.5">Create your first filter set above</span>
                   </div>
@@ -564,9 +561,9 @@ export default function QueryBar() {
                           <tr key={i} className="group hover:bg-[#f9fafb] dark:hover:bg-[#111318]/80 transition-colors">
                             <td className="px-3 py-2">
                               <div className="flex items-center gap-2">
-                                <span className="w-5 h-5 rounded bg-[#e8f0fe] dark:bg-[#2d3140] flex items-center justify-center text-[9px] text-[#1a73e8] dark:text-[#8ab4f8] shrink-0">{'\uD83D\uDD0D'}</span>
+                                <span className="w-5 h-5 rounded bg-[#e8f0fe] dark:bg-[#2d3140] flex items-center justify-center text-[9px] text-[#EF843C] dark:text-[#EF843C] shrink-0"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
                                 <button onClick={() => handleLoadFilterSet(sf)}
-                                  className="text-left text-[#1a73e8] dark:text-[#8ab4f8] hover:underline font-medium truncate max-w-[160px] block leading-tight">
+                                  className="text-left text-[#EF843C] dark:text-[#EF843C] hover:underline font-medium truncate max-w-[160px] block leading-tight">
                                   {sf.name}
                                 </button>
                               </div>
@@ -579,9 +576,9 @@ export default function QueryBar() {
                             <td className="px-3 py-2 text-right">
                               <div className="flex items-center justify-end gap-0.5">
                                 <button onClick={() => { const n = prompt('Rename:', sf.name); if (n && n.trim()) { const list = JSON.parse(localStorage.getItem('savedFilters') || '[]'); list[i].name = n.trim(); localStorage.setItem('savedFilters', JSON.stringify(list)); setSaveDialogOpen(false); setTimeout(() => setSaveDialogOpen(true), 50) } }}
-                                  className="w-6 h-6 flex items-center justify-center rounded text-[#9ca3af] hover:text-blue-500 hover:bg-[#e8f0fe] dark:hover:bg-[#2d3140] transition-all text-[11px]" title="Rename">{'\u270F\uFE0F'}</button>
+                                  className="w-6 h-6 flex items-center justify-center rounded text-[#9ca3af] hover:text-blue-500 hover:bg-[#e8f0fe] dark:hover:bg-[#2d3140] transition-all text-[11px]" title="Rename"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
                                 <button onClick={() => { if (confirm('Delete this saved filter set?')) { handleDeleteSaved(i); setSaveDialogOpen(false); setTimeout(() => setSaveDialogOpen(true), 50) } }}
-                                  className="w-6 h-6 flex items-center justify-center rounded text-[#9ca3af] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all text-[11px]" title="Delete">{'\uD83D\uDDD1\uFE0F'}</button>
+                                  className="w-6 h-6 flex items-center justify-center rounded text-[#9ca3af] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all text-[11px]" title="Delete">Delete</button>
                               </div>
                             </td>
                           </tr>

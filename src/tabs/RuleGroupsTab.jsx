@@ -1,21 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getAllGroups, createGroup, updateGroup, deleteGroup, getAllRules, updateRule } from '../services/ruleStorage'
-
-const GROUP_COLORS = [
-  '#EF4444', // Red
-  '#F97316', // Orange
-  '#F59E0B', // Amber
-  '#84CC16', // Lime
-  '#22C55E', // Green
-  '#10B981', // Emerald
-  '#06B6D4', // Cyan
-  '#3B82F6', // Blue
-  '#6366F1', // Indigo
-  '#8B5CF6', // Violet
-  '#EC4899', // Pink
-  '#6B7280', // Gray
-]
+import ResizablePanel from '../components/ResizablePanel'
 
 export default function RuleGroupsTab() {
   const [groups, setGroups] = useState([])
@@ -23,6 +9,7 @@ export default function RuleGroupsTab() {
   const [selectedId, setSelectedId] = useState(null)
   const [editing, setEditing] = useState(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [groupSearch, setGroupSearch] = useState('')
 
   const refresh = useCallback(() => {
     setGroups(getAllGroups())
@@ -55,7 +42,6 @@ export default function RuleGroupsTab() {
     updateGroup(editing.id, {
       name: editing.name,
       description: editing.description,
-      color: editing.color
     })
     refresh()
   }
@@ -79,8 +65,6 @@ export default function RuleGroupsTab() {
     refresh()
   }
 
-  const sidebarWidth = sidebarOpen ? 'w-56 lg:w-56' : 'w-0 lg:w-0'
-
   return (
     <div className="flex flex-col h-full bg-[#f8f9fc] dark:bg-[#0e0f14]">
       <header className="flex items-center gap-2 px-3 sm:px-4 py-2 text-xs border-b border-[#e5e7eb] dark:border-[#2d3140] bg-white dark:bg-[#16181f]">
@@ -91,41 +75,43 @@ export default function RuleGroupsTab() {
           </svg>
         </button>
         <span className="font-semibold text-soc-stext dark:text-soc-darkstext flex items-center gap-1.5 shrink-0">
-          <svg className="w-3.5 h-3.5 text-[#3b82f6]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          <svg className="w-3.5 h-3.5 text-[#EF843C]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
           <span className="hidden sm:inline">Rule Groups</span>
         </span>
         <span className="text-[#9ca3af] dark:text-[#6b7280] ml-1">{groups.length} groups</span>
       </header>
       <div className="flex flex-1 overflow-hidden">
-        <AnimatePresence initial={false}>
-          {sidebarOpen && (
-            <motion.aside key="sidebar" initial={{ width: 0, opacity: 0 }} animate={{ width: 'auto', opacity: 1 }} exit={{ width: 0, opacity: 0 }}
-              transition={{ duration: 0.2, ease: 'easeInOut' }}
-              className="border-r border-[#e5e7eb] dark:border-[#2d3140] overflow-hidden bg-white dark:bg-[#16181f] shrink-0">
-              <div className="w-56 flex flex-col h-full">
-                <div className="p-3 border-b border-[#e5e7eb] dark:border-[#2d3140]">
-                  <button onClick={handleNew} className="gbtn text-xs w-full flex items-center justify-center gap-1.5 bg-[#3b82f6] text-white hover:bg-[#2563eb] active:bg-[#1d4ed8] shadow-sm transition-all">
-                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
-                    New Group
-                  </button>
+        <ResizablePanel visible={sidebarOpen} defaultWidth={224} minWidth={160} maxWidth={400} storageKey="rg_sidebar_w">
+          <div className="p-3 border-b border-[#e5e7eb] dark:border-[#2d3140]">
+            <button onClick={handleNew} className="gbtn text-xs w-full flex items-center justify-center gap-1.5 bg-[#EF843C] text-white hover:bg-[#e0752a] active:bg-[#c85a14] shadow-sm transition-all">
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
+              New Group
+            </button>
+          </div>
+            <div className="px-3 pt-1.5">
+              <div className="relative">
+                <svg className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[#9ca3af]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                <input value={groupSearch} onChange={e => setGroupSearch(e.target.value)}
+                  className="w-full bg-[#f3f4f6] dark:bg-[#2d3140] border border-transparent rounded-lg pl-7 pr-2 py-1 text-[10px] outline-none text-soc-stext dark:text-soc-darkstext placeholder-[#9ca3af] focus:border-[#EF843C]/30 transition-colors"
+                  placeholder="Search groups..." />
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto py-1">
+              {groups.filter(g => !groupSearch || g.name.toLowerCase().includes(groupSearch.toLowerCase())).length === 0 && (
+                <div className="flex flex-col items-center gap-2 text-[#9ca3af] text-xs text-center py-10 px-4">
+                  <svg className="w-8 h-8 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                  {groupSearch ? 'No groups match your search' : 'No groups yet'}
                 </div>
-                <div className="flex-1 overflow-y-auto py-1">
-                  {groups.length === 0 && (
-                    <div className="flex flex-col items-center gap-2 text-[#9ca3af] text-xs text-center py-10 px-4">
-                      <svg className="w-8 h-8 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                      No groups yet
-                    </div>
-                  )}
-                  {groups.map(g => {
-                    const ruleCount = rules.filter(r => (r.groupIds || []).includes(g.id)).length
-                    return (
-                      <button key={g.id} onClick={() => handleSelect(g.id)}
-                        className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-left transition-all duration-150 border-l-2 ${
-                          selectedId === g.id
-                            ? 'bg-soc-blue/5 dark:bg-blue-500/10 text-soc-blue dark:text-blue-400 border-l-soc-blue dark:border-l-blue-400'
+              )}
+              {groups.filter(g => !groupSearch || g.name.toLowerCase().includes(groupSearch.toLowerCase())).map(g => {
+                const ruleCount = rules.filter(r => (r.groupIds || []).includes(g.id)).length
+                return (
+                  <button key={g.id} onClick={() => handleSelect(g.id)}
+                    className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-left transition-all duration-150 border-l-2 ${
+                      selectedId === g.id
+                        ? 'bg-soc-blue/5 dark:bg-blue-500/10 text-soc-blue dark:text-blue-400 border-l-soc-blue dark:border-l-blue-400'
                             : 'text-soc-stext dark:text-soc-darkstext hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] border-l-transparent'
                         }`}>
-                        <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
                         <span className="flex-1 truncate font-medium">{g.name}</span>
                         <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
                           selectedId === g.id
@@ -136,10 +122,7 @@ export default function RuleGroupsTab() {
                     )
                   })}
                 </div>
-              </div>
-            </motion.aside>
-          )}
-        </AnimatePresence>
+        </ResizablePanel>
         <div className="flex-1 overflow-y-auto p-3 sm:p-5">
           {!editing ? (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center h-full text-sm text-[#9ca3af] gap-3">
@@ -149,7 +132,6 @@ export default function RuleGroupsTab() {
           ) : (
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl mx-auto space-y-4 sm:space-y-5 pb-28">
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 bg-white dark:bg-[#16181f] rounded-xl border border-[#e5e7eb] dark:border-[#2d3140] px-4 py-3 shadow-sm">
-                <span className="inline-block w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: editing.color }} />
                 <div className="flex-1 w-full sm:w-auto">
                   <input className="ginput w-full text-sm font-semibold py-2" value={editing.name}
                     onChange={e => setEditing({ ...editing, name: e.target.value })}
@@ -172,16 +154,6 @@ export default function RuleGroupsTab() {
                       value={editing.description || ''}
                       onChange={e => setEditing({ ...editing, description: e.target.value })}
                       onBlur={handleSave} placeholder="Optional description..." />
-                  </div>
-                  <div>
-                    <label className="text-[10px] uppercase font-semibold text-[#9ca3af] tracking-wider block mb-1.5">Color</label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {GROUP_COLORS.map(c => (
-                        <button key={c} onClick={() => { setEditing({ ...editing, color: c }); updateGroup(editing.id, { color: c }); refresh() }}
-                          className={`w-6 h-6 rounded-full transition-all duration-150 ${editing.color === c ? 'ring-2 ring-offset-2 dark:ring-offset-[#16181f] scale-110' : 'hover:scale-110'}`}
-                          style={{ backgroundColor: c }} />
-                      ))}
-                    </div>
                   </div>
                 </div>
               </div>
@@ -207,12 +179,12 @@ export default function RuleGroupsTab() {
                           <div key={r.id} onClick={() => toggleRuleGroup(r.id, editing.id)}
                             className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs cursor-pointer transition-all ${
                               inGroup
-                                ? 'bg-[#3b82f6]/5 dark:bg-[#3b82f6]/10 border border-[#3b82f6]/20 dark:border-[#3b82f6]/30'
+                                ? 'bg-[#EF843C]/5 dark:bg-[#EF843C]/10 border border-[#EF843C]/20 dark:border-[#EF843C]/30'
                                 : 'hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] border border-transparent'
                             }`}>
                             <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${
                               inGroup
-                                ? 'bg-[#3b82f6] border-[#3b82f6]'
+                                ? 'bg-[#EF843C] border-[#EF843C]'
                                 : 'border-[#d1d5db] dark:border-[#4b5563]'
                             }`}>
                               {inGroup && <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4"><path d="M20 6L9 17l-5-5"/></svg>}
@@ -221,7 +193,7 @@ export default function RuleGroupsTab() {
                             <span className="flex-1 truncate font-medium text-soc-stext dark:text-soc-darkstext">{r.name}</span>
                             <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
                               inGroup
-                                ? 'bg-[#3b82f6]/10 text-[#3b82f6]'
+                                ? 'bg-[#EF843C]/10 text-[#EF843C]'
                                 : 'bg-[#f3f4f6] dark:bg-[#2d3140] text-[#9ca3af] dark:text-[#6b7280]'
                             }`}>{inGroup ? 'Assigned' : 'Add'}</span>
                           </div>

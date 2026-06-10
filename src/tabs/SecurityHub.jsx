@@ -16,8 +16,13 @@ const QUICK_TIMES = [
 
 const SEV_LABELS = { Critical: { color: '#dc2626', min: 12 }, High: { color: '#ea580c', min: 7 }, Medium: { color: '#ca8a04', min: 3 }, Low: { color: '#16a34a', min: 1 } }
 const SEV_ORDER = ['Critical', 'High', 'Medium', 'Low']
-const SEV_ICONS = { Critical: '\uD83D\uDD34', High: '\uD83D\uDFE1', Medium: '\uD83D\uDFE0', Low: '\uD83D\uDFE2' }
-const CHART_COLORS = ['#3b82f6', '#8b5cf6', '#06b6d4', '#22c55e', '#eab308', '#f97316']
+const SEV_ICONS = {
+  Critical: <svg className="w-3 h-3 inline" viewBox="0 0 24 24" fill="#dc2626"><circle cx="12" cy="12" r="10"/></svg>,
+  High: <svg className="w-3 h-3 inline" viewBox="0 0 24 24" fill="#ea580c"><circle cx="12" cy="12" r="10"/></svg>,
+  Medium: <svg className="w-3 h-3 inline" viewBox="0 0 24 24" fill="#ca8a04"><circle cx="12" cy="12" r="10"/></svg>,
+  Low: <svg className="w-3 h-3 inline" viewBox="0 0 24 24" fill="#16a34a"><circle cx="12" cy="12" r="10"/></svg>
+}
+const CHART_COLORS = ['#EF843C', '#8b5cf6', '#06b6d4', '#22c55e', '#eab308', '#f97316']
 
 const SEV_RANGES = {
   Critical: '>=12',
@@ -57,7 +62,7 @@ function FilterBtn({ field, value, label }) {
   const { addFilter } = useApp()
   const handle = (e) => { e.stopPropagation(); addFilter(field, value, false) }
   return (
-    <button onClick={handle} className="ml-auto p-1 rounded hover:bg-[#3b82f6]/20 text-[#9ca3af] dark:text-[#6b7280] hover:text-[#3b82f6] dark:hover:text-[#60a5fa] transition-all shrink-0 opacity-0 group-hover:opacity-100" title={'Filter by ' + label}>
+    <button onClick={handle} className="ml-auto p-1 rounded hover:bg-[#EF843C]/20 text-[#9ca3af] dark:text-[#6b7280] hover:text-[#EF843C] dark:hover:text-[#EF843C] transition-all shrink-0 opacity-0 group-hover:opacity-100" title={'Filter by ' + label}>
       <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path fillRule="evenodd" d="M8 7h3.5a.5.5 0 1 1 0 1H8v3.5a.5.5 0 1 1-1 0V8H3.5a.5.5 0 0 1 0-1H7V3.5a.5.5 0 0 1 1 0V7Z"/></svg>
     </button>
   )
@@ -141,7 +146,7 @@ export default function SecurityHub() {
   const fetchData = useCallback(async () => {
     try {
       const tp = timeParams()
-      const d = await api('dashboard', { index: 'wazuh-alerts-4.x-*', start_date: tp.start_date, end_date: tp.end_date })
+      const d = await api('dashboard', { index: 'unishield360-alerts-4.x-*', start_date: tp.start_date, end_date: tp.end_date })
       setData({
         count24: d.count24 || 0,
         count7d: d.count7d || 0,
@@ -194,7 +199,7 @@ export default function SecurityHub() {
   )
   if (error) return (
     <div className="gcard p-6 text-center">
-      <div className="text-2xl mb-2">{'\u26A0\uFE0F'}</div>
+      <div className="text-2xl mb-2"><svg className="w-8 h-8 inline text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
       <div className="text-sm text-[#dc2626] mb-3">{error}</div>
       <button onClick={fetchData} className="gbtn-primary px-4 py-1.5">Retry</button>
     </div>
@@ -206,10 +211,10 @@ export default function SecurityHub() {
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="gcard px-4 py-2.5 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <PulseDot />
-          <span className="text-sm font-semibold text-[#1a1c23] dark:text-[#e4e6eb]">{'\uD83D\uDD0D'} Security Hub</span>
+          <span className="text-sm font-semibold text-[#1a1c23] dark:text-[#e4e6eb]"><svg className="w-4 h-4 inline mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Security Hub</span>
           <span className="gchip text-[10px]">{(count24 || 0).toLocaleString()} alerts</span>
           {drillFilters.length > 0 && (
-            <span className="gchip text-[9px] bg-[#3b82f6]/10 text-[#3b82f6] dark:text-[#60a5fa]">{'Drill: ' + drillFilters.length}</span>
+            <span className="gchip text-[9px] bg-[#EF843C]/10 text-[#EF843C] dark:text-[#EF843C]">{'Drill: ' + drillFilters.length}</span>
           )}
         </div>
         <div className="flex items-center gap-1 flex-wrap">
@@ -224,7 +229,7 @@ export default function SecurityHub() {
 
       <div className="grid grid-cols-5 gap-2.5">
         {[
-          { label: 'Total Alerts', value: count24, prev: count7d / 7, field: '*', val: '*', color: '#3b82f6' },
+          { label: 'Total Alerts', value: count24, prev: count7d / 7, field: '*', val: '*', color: '#EF843C' },
           { label: 'Last 7 Days', value: count7d, prev: count30d / 4, field: '*', val: '*', color: '#8b5cf6' },
           { label: 'Last 30 Days', value: count30d, prev: null, field: '*', val: '*', color: '#06b6d4' },
           { label: 'Alert Rate', value: Math.round(count24 / 24), prev: null, suffix: '/hr', field: '*', val: '*', color: '#16a34a' },
@@ -296,11 +301,11 @@ export default function SecurityHub() {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={timelineData} margin={{ top: 8, right: 8, bottom: 0, left: -20 }}>
-                  <defs><linearGradient id="tg" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient></defs>
+                  <defs><linearGradient id="tg" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#EF843C" stopOpacity={0.3}/><stop offset="95%" stopColor="#EF843C" stopOpacity={0}/></linearGradient></defs>
                   <XAxis dataKey="time" tick={{ fontSize: 9, fill: '#9ca3af' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
                   <YAxis tick={{ fontSize: 9, fill: '#9ca3af' }} axisLine={false} tickLine={false} width={30} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Area type="monotone" dataKey="alerts" stroke="#3b82f6" strokeWidth={2} fill="url(#tg)" dot={false} activeDot={{ r: 4, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }} />
+                  <Area type="monotone" dataKey="alerts" stroke="#EF843C" strokeWidth={2} fill="url(#tg)" dot={false} activeDot={{ r: 4, fill: '#EF843C', stroke: '#fff', strokeWidth: 2 }} />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -327,10 +332,10 @@ export default function SecurityHub() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-0.5">
                       <span className="text-xs text-[#1a1c23] dark:text-[#e4e6eb] truncate">{r.name}</span>
-                      <span className="shrink-0 ml-2 text-xs font-semibold text-[#3b82f6] dark:text-[#60a5fa]">{r.count.toLocaleString()}</span>
+                      <span className="shrink-0 ml-2 text-xs font-semibold text-[#EF843C] dark:text-[#EF843C]">{r.count.toLocaleString()}</span>
                     </div>
                     <div className="w-full h-1 bg-[#f3f4f6] dark:bg-[#2d3140] rounded-full overflow-hidden">
-                      <div className="h-full rounded-full bg-[#3b82f6] dark:bg-[#60a5fa] transition-all duration-700" style={{ width: (r.count / maxRule) * 100 + '%' }} />
+                      <div className="h-full rounded-full bg-[#EF843C] dark:bg-[#EF843C] transition-all duration-700" style={{ width: (r.count / maxRule) * 100 + '%' }} />
                     </div>
                   </div>
                   <FilterBtn field="rule.id" value={r.name} label={r.name} />
@@ -418,7 +423,7 @@ export default function SecurityHub() {
                 <span className="gchip text-[9px]">{data.recent?.length || 0}</span>
               </div>
               <div className="flex items-center gap-2">
-                <PulseDot color="#3b82f6" />
+                <PulseDot color="#EF843C" />
                 <span className="text-[9px] text-[#9ca3af] dark:text-[#6b7280]">60s refresh</span>
               </div>
             </div>
@@ -442,7 +447,7 @@ export default function SecurityHub() {
                   return (
                     <tr key={i} className={'border-b border-[#e5e7eb]/50 dark:border-[#2d3140]/30 hover:bg-[#f9fafb]/50 dark:hover:bg-[#2d3140]/30 transition-colors group ' + (i % 2 === 0 ? '' : 'bg-[#f9fafb]/30 dark:bg-[#0f1117]/30')}>
                       <td className="py-2.5 px-4 whitespace-nowrap font-mono">
-                        <button onClick={() => addDrill('@timestamp', r['@timestamp'] || 'now')} className="text-[#6b7280] dark:text-[#9ca3af] hover:text-[#3b82f6] dark:hover:text-[#60a5fa] transition-colors text-[10px]">
+                        <button onClick={() => addDrill('@timestamp', r['@timestamp'] || 'now')} className="text-[#6b7280] dark:text-[#9ca3af] hover:text-[#EF843C] dark:hover:text-[#EF843C] transition-colors text-[10px]">
                           {r['@timestamp'] ? new Date(r['@timestamp']).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'}
                         </button>
                       </td>
@@ -452,12 +457,12 @@ export default function SecurityHub() {
                         </button>
                       </td>
                       <td className="py-2.5 px-3">
-                        <button onClick={() => addDrill('rule.id', r.rule?.id)} className="text-[#3b82f6] dark:text-[#60a5fa] hover:underline truncate max-w-[100px] block">
+                        <button onClick={() => addDrill('rule.id', r.rule?.id)} className="text-[#EF843C] dark:text-[#EF843C] hover:underline truncate max-w-[100px] block">
                           {r.rule?.id || '--'}
                         </button>
                       </td>
                       <td className="py-2.5 px-3 hidden sm:table-cell">
-                        <button onClick={() => addDrill('agent.name', r.agent?.name)} className="text-[#1a1c23] dark:text-[#e4e6eb] hover:text-[#3b82f6] dark:hover:text-[#60a5fa] transition-colors truncate max-w-[100px] block">
+                        <button onClick={() => addDrill('agent.name', r.agent?.name)} className="text-[#1a1c23] dark:text-[#e4e6eb] hover:text-[#EF843C] dark:hover:text-[#EF843C] transition-colors truncate max-w-[100px] block">
                           {r.agent?.name || '--'}
                         </button>
                       </td>
@@ -471,7 +476,7 @@ export default function SecurityHub() {
                   )
                 })}
                 {data.recent.length === 0 && (
-                  <tr><td colSpan={6} className="py-10 text-center text-[#9ca3af] dark:text-[#6b7280]">{'\uD83D\uDCC4'} No recent alerts</td></tr>
+                  <tr><td colSpan={6} className="py-10 text-center text-[#9ca3af] dark:text-[#6b7280]"><svg className="w-4 h-4 inline mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> No recent alerts</td></tr>
                 )}
               </tbody>
             </table>
@@ -488,14 +493,14 @@ export default function SecurityHub() {
                 <span className="gchip text-[9px]">{drillFilters.length}</span>
               </div>
               <div className="flex items-center gap-2">
-                {drillLoading && <span className="text-[9px] text-[#9ca3af] dark:text-[#6b7280]">{'\u23F3'} searching...</span>}
+                {drillLoading && <span className="text-[9px] text-[#9ca3af] dark:text-[#6b7280]"><svg className="w-3 h-3 inline animate-spin mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> searching...</span>}
                 <button onClick={clearDrills} className="gbtn-ghost text-[10px] text-[#dc2626] dark:text-red-400">Clear All</button>
               </div>
             </div>
           </div>
           <div className="px-4 py-2 flex flex-wrap gap-1.5">
             {drillFilters.map((f, i) => (
-              <span key={i} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-[#eff6ff] dark:bg-[#3b82f6]/10 border border-[#bfdbfe] dark:border-[#3b82f6]/30 text-[10px] text-[#2563eb] dark:text-blue-400">
+              <span key={i} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-[#eff6ff] dark:bg-[#EF843C]/10 border border-[#bfdbfe] dark:border-[#EF843C]/30 text-[10px] text-[#e0752a] dark:text-blue-400">
                 <span className="font-medium">{f.field}:</span>
                 <span className="truncate max-w-[120px]">{f.value}</span>
                 <button onClick={() => removeDrill(i)} className="ml-0.5 hover:text-[#dc2626] transition-colors">
@@ -534,20 +539,20 @@ export default function SecurityHub() {
                   return (
                     <tr key={r._id || i} className={'border-b border-[#e5e7eb]/50 dark:border-[#2d3140]/30 hover:bg-[#f9fafb]/50 dark:hover:bg-[#2d3140]/30 transition-colors group ' + (i % 2 === 0 ? '' : 'bg-[#f9fafb]/30 dark:bg-[#0f1117]/30')}>
                       <td className="py-2.5 px-4 whitespace-nowrap font-mono text-[10px] text-[#6b7280] dark:text-[#9ca3af]">
-                        {r['@timestamp'] ? new Date(r['@timestamp']).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '\u2014'}
+                        {r['@timestamp'] ? new Date(r['@timestamp']).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-'}
                       </td>
                       <td className="py-2.5 px-3">
-                        <button onClick={() => addDrill('rule.level', r?.rule?.level)} className={'text-[10px] badge ' + badgeCls + ' hover:opacity-80 transition-opacity'}>{lv || '\u2014'}</button>
+                        <button onClick={() => addDrill('rule.level', r?.rule?.level)} className={'text-[10px] badge ' + badgeCls + ' hover:opacity-80 transition-opacity'}>{lv || '-'}</button>
                       </td>
                       <td className="py-2.5 px-3">
-                        <button onClick={() => addDrill('rule.id', r?.rule?.id)} className="text-[#3b82f6] dark:text-[#60a5fa] hover:underline truncate max-w-[100px] block">{(r?.rule?.id || '').toString()}</button>
+                        <button onClick={() => addDrill('rule.id', r?.rule?.id)} className="text-[#EF843C] dark:text-[#EF843C] hover:underline truncate max-w-[100px] block">{(r?.rule?.id || '').toString()}</button>
                       </td>
                       <td className="py-2.5 px-3 hidden sm:table-cell">
-                        <button onClick={() => addDrill('agent.name', r?.agent?.name)} className="text-[#1a1c23] dark:text-[#e4e6eb] hover:text-[#3b82f6] dark:hover:text-[#60a5fa] transition-colors truncate max-w-[100px] block">{r?.agent?.name || '\u2014'}</button>
+                        <button onClick={() => addDrill('agent.name', r?.agent?.name)} className="text-[#1a1c23] dark:text-[#e4e6eb] hover:text-[#EF843C] dark:hover:text-[#EF843C] transition-colors truncate max-w-[100px] block">{r?.agent?.name || '-'}</button>
                       </td>
                       <td className="py-2.5 px-3 hidden md:table-cell"><span className="text-[#6b7280] dark:text-[#9ca3af] truncate max-w-[180px] block text-[10px]">{r?.rule?.description || r?.rule?.groups?.[0] || ''}</span></td>
                       <td className="py-2.5 px-4 text-right">
-                        <button onClick={() => addDrill('_id', r._id)} className="p-1 rounded hover:bg-[#3b82f6]/20 text-[#9ca3af] dark:text-[#6b7280] hover:text-[#3b82f6] dark:hover:text-[#60a5fa] transition-all" title="Filter by this alert">
+                        <button onClick={() => addDrill('_id', r._id)} className="p-1 rounded hover:bg-[#EF843C]/20 text-[#9ca3af] dark:text-[#6b7280] hover:text-[#EF843C] dark:hover:text-[#EF843C] transition-all" title="Filter by this alert">
                           <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path fillRule="evenodd" d="M8 7h3.5a.5.5 0 1 1 0 1H8v3.5a.5.5 0 1 1-1 0V8H3.5a.5.5 0 0 1 0-1H7V3.5a.5.5 0 0 1 1 0V7Z"/></svg>
                         </button>
                       </td>
@@ -557,7 +562,7 @@ export default function SecurityHub() {
               </tbody>
             </table>
             {(!drillResults?.results || drillResults.results.length === 0) && (
-              <div className="text-center py-10 text-xs text-[#9ca3af] dark:text-[#6b7280]">{'\uD83D\uDCC4'} No results</div>
+              <div className="text-center py-10 text-xs text-[#9ca3af] dark:text-[#6b7280]"><svg className="w-4 h-4 inline mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> No results</div>
             )}
           </div>
         </motion.div>
@@ -566,13 +571,13 @@ export default function SecurityHub() {
       {drillFilters.length === 0 && (
         <div className="flex items-center justify-center py-8 text-xs text-[#9ca3af] dark:text-[#6b7280] gap-2">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/></svg>
-          Click any widget above to drill down \u2014 results appear here
+          Click any widget above to drill down - results appear here
         </div>
       )}
 
       <div className="flex items-center justify-between text-[10px] text-[#9ca3af] dark:text-[#6b7280] pt-1">
         <div className="flex items-center gap-3">
-          <span>{'\uD83D\uDD0D'} Security Hub &middot; Drill-down &middot; 60s refresh</span>
+          <span><svg className="w-3 h-3 inline mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Security Hub &middot; Drill-down &middot; 60s refresh</span>
           <span className="hidden sm:inline">Last: {lastUpdated.toLocaleTimeString()}</span>
         </div>
         <button onClick={() => { clearDrills(); fetchData() }} className="gbtn-ghost gap-1 inline-flex items-center">

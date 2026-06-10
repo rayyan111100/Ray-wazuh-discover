@@ -13,7 +13,7 @@ export default function DashboardStats() {
   useEffect(() => {
     (async () => {
       try {
-        const d = await api('search', { index: 'wazuh-alerts-4.x-*', limit: 0, start_date: 'now-24h', end_date: 'now' })
+        const d = await api('search', { index: 'unishield360-alerts-4.x-*', limit: 0, start_date: 'now-24h', end_date: 'now' })
         const total = d.total || 0
         const byLevel = {}
         for (const r of (d.results || [])) {

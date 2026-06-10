@@ -4,21 +4,6 @@ import { getAllGroups, getAllRules, getRule, updateRule } from '../services/rule
 import { createGroup, updateGroup, deleteGroup, getGroupStats } from '../services/ruleGroupManager'
 import { useToast } from '../context/ToastContext'
 
-const GROUP_COLORS = [
-  '#EF4444', // Red
-  '#F97316', // Orange
-  '#F59E0B', // Amber
-  '#84CC16', // Lime
-  '#22C55E', // Green
-  '#10B981', // Emerald
-  '#06B6D4', // Cyan
-  '#3B82F6', // Blue
-  '#6366F1', // Indigo
-  '#8B5CF6', // Violet
-  '#EC4899', // Pink
-  '#6B7280', // Gray
-]
-
 function ConfirmDialog({ open, title, message, onConfirm, onCancel }) {
   if (!open) return null
   return (
@@ -38,10 +23,9 @@ function ConfirmDialog({ open, title, message, onConfirm, onCancel }) {
 function EditGroupModal({ open, group, onSave, onCancel }) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [color, setColor] = useState('#3b82f6')
 
   useEffect(() => {
-    if (group) { setName(group.name); setDescription(group.description || ''); setColor(group.color || '#3b82f6') }
+    if (group) { setName(group.name); setDescription(group.description || '') }
   }, [group])
 
   if (!open || !group) return null
@@ -58,20 +42,10 @@ function EditGroupModal({ open, group, onSave, onCancel }) {
             <label className="text-[10px] uppercase font-semibold text-[#9ca3af] tracking-wider block mb-1">Description</label>
             <textarea className="ginput w-full text-xs p-2 resize-none" rows={2} value={description} onChange={e => setDescription(e.target.value)} />
           </div>
-          <div>
-            <label className="text-[10px] uppercase font-semibold text-[#9ca3af] tracking-wider block mb-1.5">Color</label>
-            <div className="flex flex-wrap gap-1.5">
-              {GROUP_COLORS.map(c => (
-                <button key={c} onClick={() => setColor(c)}
-                  className={`w-6 h-6 rounded-full transition-all duration-150 ${color === c ? 'ring-2 ring-offset-2 dark:ring-offset-[#1a1d27] scale-110' : 'hover:scale-110'}`}
-                  style={{ backgroundColor: c }} />
-              ))}
-            </div>
-          </div>
         </div>
         <div className="flex items-center justify-end gap-2 mt-4">
           <button onClick={onCancel} className="gbtn text-xs px-3 py-1.5 bg-[#f3f4f6] dark:bg-[#2d3140] hover:bg-[#e5e7eb] dark:hover:bg-[#374151] transition-colors">Cancel</button>
-          <button onClick={() => onSave({ name, description, color })} className="gbtn text-xs px-3 py-1.5 bg-[#3b82f6] text-white hover:bg-[#2563eb] transition-colors">Save</button>
+          <button onClick={() => onSave({ name, description })} className="gbtn text-xs px-3 py-1.5 bg-[#EF843C] text-white hover:bg-[#e0752a] transition-colors">Save</button>
         </div>
       </div>
     </div>
@@ -248,7 +222,7 @@ export default function GroupSidebar({
           <div className="px-3 pt-2 pb-1">
             <div className="relative">
               <svg className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[#9ca3af] pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-              <input className="w-full bg-[#f3f4f6] dark:bg-[#0f1117] border border-transparent focus:border-[#3b82f6]/30 rounded-lg pl-7 pr-2 py-1.5 text-[11px] outline-none text-soc-stext dark:text-soc-darkstext placeholder:text-[#9ca3af] transition-colors"
+              <input className="w-full bg-[#f3f4f6] dark:bg-[#0f1117] border border-transparent focus:border-[#EF843C]/30 rounded-lg pl-7 pr-2 py-1.5 text-[11px] outline-none text-soc-stext dark:text-soc-darkstext placeholder:text-[#9ca3af] transition-colors"
                 placeholder="Search groups..." value={search} onChange={e => setSearch(e.target.value)} />
             </div>
           </div>
@@ -260,13 +234,13 @@ export default function GroupSidebar({
               <button onClick={() => onSelectGroup(null)}
                 className={`w-full flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium rounded-lg transition-all duration-150 ${
                   !selectedGroupId
-                    ? 'bg-[#3b82f6]/10 text-[#3b82f6] dark:text-[#60a5fa] dark:bg-[#60a5fa]/10'
+                    ? 'bg-[#EF843C]/10 text-[#EF843C] dark:text-[#EF843C] dark:bg-[#EF843C]/10'
                     : 'text-[#6b7280] dark:text-[#9ca3af] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140]'
                 }`}>
                 <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                 <span className="flex-1 truncate">All Rules</span>
                 <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
-                  !selectedGroupId ? 'bg-[#3b82f6]/10 text-[#3b82f6]' : 'bg-[#f3f4f6] dark:bg-[#2d3140] text-[#9ca3af] dark:text-[#6b7280]'
+                  !selectedGroupId ? 'bg-[#EF843C]/10 text-[#EF843C]' : 'bg-[#f3f4f6] dark:bg-[#2d3140] text-[#9ca3af] dark:text-[#6b7280]'
                 }`}>{rules.length}</span>
               </button>
 
@@ -291,14 +265,14 @@ export default function GroupSidebar({
             <>
               <button onClick={() => onSelectGroup(null)} title="All Rules"
                 className={`w-full flex items-center justify-center px-1 py-2 text-xs rounded-lg transition-all ${
-                  !selectedGroupId ? 'bg-[#3b82f6]/10 text-[#3b82f6]' : 'text-[#6b7280] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140]'}`}>
+                  !selectedGroupId ? 'bg-[#EF843C]/10 text-[#EF843C]' : 'text-[#6b7280] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140]'}`}>
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
               </button>
               {groups.map(g => (
                 <button key={g.id} onClick={() => handleSelect(g.id)} title={g.name}
                   className={`w-full flex items-center justify-center px-1 py-2 rounded-lg transition-all ${
-                    selectedGroupId === g.id ? 'bg-[#3b82f6]/10' : 'hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140]'}`}>
-                  <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: g.color }} />
+                    selectedGroupId === g.id ? 'bg-[#EF843C]/10' : 'hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140]'}`}>
+
                 </button>
               ))}
             </>
@@ -312,17 +286,16 @@ export default function GroupSidebar({
                 onDrop={handleDrop}
                 onDragEnd={handleDragEnd}
                 onContextMenu={e => handleContextMenu(e, s)}
-                className={`group relative ${dropIndex === idx ? 'border-t-2 border-[#3b82f6]' : ''}`}>
+                className={`group relative ${dropIndex === idx ? 'border-t-2 border-[#EF843C]' : ''}`}>
                 <button onClick={() => handleSelect(s.id)}
                   className={`w-full flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium rounded-lg transition-all duration-150 pr-8 ${
                     selectedGroupId === s.id
-                      ? 'bg-[#3b82f6]/10 text-[#3b82f6] dark:text-[#60a5fa] dark:bg-[#60a5fa]/10'
+                      ? 'bg-[#EF843C]/10 text-[#EF843C] dark:text-[#EF843C] dark:bg-[#EF843C]/10'
                       : 'text-[#6b7280] dark:text-[#9ca3af] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140]'
                   }`}>
-                  <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
                   <span className="flex-1 truncate">{s.name}</span>
                   <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
-                    selectedGroupId === s.id ? 'bg-[#3b82f6]/10 text-[#3b82f6]' : 'bg-[#f3f4f6] dark:bg-[#2d3140] text-[#9ca3af] dark:text-[#6b7280]'
+                    selectedGroupId === s.id ? 'bg-[#EF843C]/10 text-[#EF843C]' : 'bg-[#f3f4f6] dark:bg-[#2d3140] text-[#9ca3af] dark:text-[#6b7280]'
                   }`}>{s.ruleCount}</span>
                 </button>
                 <button onClick={e => handleContextMenu(e, s)}
@@ -346,7 +319,7 @@ export default function GroupSidebar({
               <span>{totalEnabled} on / {totalDisabled} off</span>
             </div>
             <button onClick={handleCreate}
-              className="gbtn text-xs w-full flex items-center justify-center gap-1.5 bg-[#3b82f6] text-white hover:bg-[#2563eb] active:bg-[#1d4ed8] shadow-sm transition-all">
+              className="gbtn text-xs w-full flex items-center justify-center gap-1.5 bg-[#EF843C] text-white hover:bg-[#e0752a] active:bg-[#c85a14] shadow-sm transition-all">
               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
               Create New Group
             </button>

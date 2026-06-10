@@ -115,7 +115,7 @@ export default function TestLab() {
   return (
     <div className="flex flex-col h-full bg-[#f8f9fc] dark:bg-[#0e0f14]">
       <header className="flex items-center gap-2 px-3 sm:px-4 py-2 border-b border-[#e5e7eb] dark:border-[#2d3140] bg-white dark:bg-[#16181f]">
-        <svg className="w-4 h-4 text-[#3b82f6]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+        <svg className="w-4 h-4 text-[#EF843C]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
         <span className="font-semibold text-soc-stext dark:text-soc-darkstext">Test Lab</span>
         <span className="text-[10px] text-[#9ca3af]">{rules.length} rules</span>
       </header>
@@ -124,7 +124,7 @@ export default function TestLab() {
         {['run', 'results', 'history'].map(v => (
           <button key={v} onClick={() => setActiveView(v)}
             className={`text-[10px] px-2.5 py-1 rounded-full font-medium transition-all uppercase tracking-wider ${
-              activeView === v ? 'bg-[#3b82f6]/10 text-[#3b82f6]' : 'text-[#9ca3af] hover:text-[#6b7280] dark:hover:text-[#e4e6eb]'
+              activeView === v ? 'bg-[#EF843C]/10 text-[#EF843C]' : 'text-[#9ca3af] hover:text-[#6b7280] dark:hover:text-[#e4e6eb]'
             }`}>{v}</button>
         ))}
       </div>
@@ -138,19 +138,19 @@ export default function TestLab() {
                   <svg className="w-3.5 h-3.5 text-[#9ca3af]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                   <span className="text-[11px] uppercase font-semibold text-[#9ca3af] tracking-wider">Select Rules</span>
                 </div>
-                <button onClick={toggleSelectAll} className="text-[10px] text-[#3b82f6] hover:underline">
+                <button onClick={toggleSelectAll} className="text-[10px] text-[#EF843C] hover:underline">
                   {selectedRuleIds.length === rules.length ? 'Deselect All' : 'Select All'}
                 </button>
               </div>
               <div className="max-h-40 overflow-y-auto divide-y divide-[#e5e7eb] dark:divide-[#2d3140]">
                 {rules.length === 0 && <div className="text-xs text-[#9ca3af] py-6 text-center italic">No rules defined</div>}
                 {rules.map(r => (
-                  <label key={r.id} className={`flex items-center gap-2.5 px-3 sm:px-4 py-2 text-xs cursor-pointer hover:bg-[#f9fafb] dark:hover:bg-[#0f1117] transition-colors ${selectedRuleIds.includes(r.id) ? 'bg-[#3b82f6]/5 dark:bg-[#3b82f6]/10' : ''}`}>
+                  <label key={r.id} className={`flex items-center gap-2.5 px-3 sm:px-4 py-2 text-xs cursor-pointer hover:bg-[#f9fafb] dark:hover:bg-[#0f1117] transition-colors ${selectedRuleIds.includes(r.id) ? 'bg-[#EF843C]/5 dark:bg-[#EF843C]/10' : ''}`}>
                     <input type="checkbox" checked={selectedRuleIds.includes(r.id)} onChange={() => toggleRule(r.id)}
-                      className="w-3.5 h-3.5 rounded border-[#d1d5db] dark:border-[#4b5563] text-[#3b82f6] focus:ring-[#3b82f6]/30" />
+                      className="w-3.5 h-3.5 rounded border-[#d1d5db] dark:border-[#4b5563] text-[#EF843C] focus:ring-[#EF843C]/30" />
                     <span className={`w-2 h-2 rounded-full shrink-0 ${r.enabled ? 'bg-green-500' : 'bg-[#d1d5db] dark:bg-[#4b5563]'}`} />
                     <span className="flex-1 truncate text-soc-stext dark:text-soc-darkstext">{r.name}</span>
-                    {selectedRuleIds.includes(r.id) && <span className="text-[9px] text-[#3b82f6] font-medium">selected</span>}
+                    {selectedRuleIds.includes(r.id) && <span className="text-[9px] text-[#EF843C] font-medium">selected</span>}
                   </label>
                 ))}
               </div>
@@ -168,7 +168,7 @@ export default function TestLab() {
                 <div className="flex items-center gap-2">
                   <input className="ginput text-[10px] py-1 px-2 w-32" placeholder="Test name (optional)" value={savedName} onChange={e => setSavedName(e.target.value)} />
                   <button onClick={handleRunTest}
-                    className="gbtn text-xs flex items-center gap-1 px-3 py-1.5 bg-[#3b82f6] text-white hover:bg-[#2563eb] shadow-sm transition-all">
+                    className="gbtn text-xs flex items-center gap-1 px-3 py-1.5 bg-[#EF843C] text-white hover:bg-[#e0752a] shadow-sm transition-all">
                     <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 3l14 9-14 9V3z"/></svg>
                     Run Test
                   </button>
@@ -245,7 +245,7 @@ export default function TestLab() {
               <div className="space-y-1.5">
                 {history.map(h => (
                   <div key={h.id}
-                    className="flex items-center gap-3 px-3 sm:px-4 py-2.5 bg-white dark:bg-[#16181f] rounded-xl border border-[#e5e7eb] dark:border-[#2d3140] shadow-sm cursor-pointer hover:border-[#3b82f6]/50 dark:hover:border-[#3b82f6]/30 transition-colors"
+                    className="flex items-center gap-3 px-3 sm:px-4 py-2.5 bg-white dark:bg-[#16181f] rounded-xl border border-[#e5e7eb] dark:border-[#2d3140] shadow-sm cursor-pointer hover:border-[#EF843C]/50 dark:hover:border-[#EF843C]/30 transition-colors"
                     onClick={() => loadHistoryEntry(h)}>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 text-xs">

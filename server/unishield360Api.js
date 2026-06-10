@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const API_URL = process.env.WAZUH_API_URL;
+const API_URL = process.env.UNISHIELD360_API_URL;
 
 const api = axios.create({
   baseURL: API_URL,

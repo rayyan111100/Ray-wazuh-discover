@@ -34,7 +34,7 @@ function ConfirmDialog({ open, title, message, confirmLabel, onConfirm, onCancel
         <p className="text-xs text-[#6b7280] dark:text-[#9ca3af] mb-4">{message}</p>
         <div className="flex items-center justify-end gap-2">
           <button onClick={onCancel} className="gbtn text-xs px-3 py-1.5 bg-[#f3f4f6] dark:bg-[#2d3140] hover:bg-[#e5e7eb] dark:hover:bg-[#374151] transition-colors">Cancel</button>
-          <button onClick={onConfirm} className={`gbtn text-xs px-3 py-1.5 transition-colors ${confirmLabel?.includes('Delete') ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-[#3b82f6] text-white hover:bg-[#2563eb]'}`}>{confirmLabel || 'Confirm'}</button>
+          <button onClick={onConfirm} className={`gbtn text-xs px-3 py-1.5 transition-colors ${confirmLabel?.includes('Delete') ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-[#EF843C] text-white hover:bg-[#e0752a]'}`}>{confirmLabel || 'Confirm'}</button>
         </div>
       </div>
     </div>
@@ -67,12 +67,12 @@ function MergeDialog({ open, sourceGroup, groups, onMerge, onCancel }) {
             <div className="space-y-1.5">
               <label className="flex items-center gap-2 text-xs cursor-pointer">
                 <input type="radio" name="strategy" value="move" checked={strategy === 'move'} onChange={() => setStrategy('move')}
-                  className="text-[#3b82f6] focus:ring-[#3b82f6]/30" />
+                  className="text-[#EF843C] focus:ring-[#EF843C]/30" />
                 <span className="text-soc-stext dark:text-soc-darkstext">Move all rules to target (deletes source)</span>
               </label>
               <label className="flex items-center gap-2 text-xs cursor-pointer">
                 <input type="radio" name="strategy" value="copy" checked={strategy === 'copy'} onChange={() => setStrategy('copy')}
-                  className="text-[#3b82f6] focus:ring-[#3b82f6]/30" />
+                  className="text-[#EF843C] focus:ring-[#EF843C]/30" />
                 <span className="text-soc-stext dark:text-soc-darkstext">Copy rules to target (keeps both groups)</span>
               </label>
             </div>
@@ -81,7 +81,7 @@ function MergeDialog({ open, sourceGroup, groups, onMerge, onCancel }) {
         <div className="flex items-center justify-end gap-2 mt-4">
           <button onClick={onCancel} className="gbtn text-xs px-3 py-1.5 bg-[#f3f4f6] dark:bg-[#2d3140] hover:bg-[#e5e7eb] dark:hover:bg-[#374151] transition-colors">Cancel</button>
           <button onClick={() => onMerge(targetId, strategy)} disabled={!targetId}
-            className="gbtn text-xs px-3 py-1.5 bg-[#3b82f6] text-white hover:bg-[#2563eb] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">Merge</button>
+            className="gbtn text-xs px-3 py-1.5 bg-[#EF843C] text-white hover:bg-[#e0752a] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">Merge</button>
         </div>
       </div>
     </div>
@@ -260,7 +260,7 @@ export default function GroupRulesTab() {
     <div className="flex flex-col h-full bg-[#f8f9fc] dark:bg-[#0e0f14]">
       <header className="flex items-center gap-2 px-3 sm:px-4 py-2 text-xs border-b border-[#e5e7eb] dark:border-[#2d3140] bg-white dark:bg-[#16181f]">
         <span className="font-semibold text-soc-stext dark:text-soc-darkstext flex items-center gap-1.5 shrink-0">
-          <svg className="w-3.5 h-3.5 text-[#3b82f6]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          <svg className="w-3.5 h-3.5 text-[#EF843C]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
           <span className="hidden sm:inline">Group Rules</span>
         </span>
         <span className="text-[#9ca3af] ml-1">{groups.length} groups</span>
@@ -268,7 +268,7 @@ export default function GroupRulesTab() {
         <span className="text-[#9ca3af]">{ungroupedRules.length} ungrouped</span>
         <div className="ml-auto flex items-center gap-2">
           <button onClick={handleCreateGroup}
-            className="gbtn text-xs flex items-center gap-1 bg-[#3b82f6] text-white hover:bg-[#2563eb] px-2.5 py-1.5 shadow-sm transition-all">
+            className="gbtn text-xs flex items-center gap-1 bg-[#EF843C] text-white hover:bg-[#e0752a] px-2.5 py-1.5 shadow-sm transition-all">
             <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
             <span className="hidden sm:inline">New Group</span>
           </button>
@@ -280,12 +280,12 @@ export default function GroupRulesTab() {
           <div className="flex-1 overflow-y-auto py-1">
             <button onClick={() => handleGroupSelect(null)}
               className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium transition-all duration-150 ${
-                !selectedGroupId ? 'bg-[#3b82f6]/10 text-[#3b82f6]' : 'text-[#6b7280] dark:text-[#9ca3af] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140]'
+                !selectedGroupId ? 'bg-[#EF843C]/10 text-[#EF843C]' : 'text-[#6b7280] dark:text-[#9ca3af] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140]'
               }`}>
               <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
               <span className="flex-1 truncate">Ungrouped</span>
               <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
-                !selectedGroupId ? 'bg-[#3b82f6]/10 text-[#3b82f6]' : 'bg-[#f3f4f6] dark:bg-[#2d3140] text-[#9ca3af]'
+                !selectedGroupId ? 'bg-[#EF843C]/10 text-[#EF843C]' : 'bg-[#f3f4f6] dark:bg-[#2d3140] text-[#9ca3af]'
               }`}>{ungroupedRules.length}</span>
             </button>
             <div className="h-px bg-[#e5e7eb] dark:bg-[#2d3140] my-1 mx-2" />
@@ -302,7 +302,6 @@ export default function GroupRulesTab() {
                         ? 'bg-soc-blue/5 dark:bg-blue-500/10 text-soc-blue dark:text-blue-400 border-l-soc-blue dark:border-l-blue-400'
                         : 'text-[#6b7280] dark:text-[#9ca3af] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] border-l-transparent'
                     }`}>
-                    <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
                     <span className="flex-1 truncate">{g.name}</span>
                     <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
                       selectedGroupId === g.id ? 'bg-soc-blue/10 dark:bg-blue-500/20 text-soc-blue' : 'bg-[#f3f4f6] dark:bg-[#2d3140] text-[#9ca3af]'
@@ -339,7 +338,6 @@ export default function GroupRulesTab() {
             <>
               <div className="flex items-start gap-4 mb-4 flex-wrap">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <span className="inline-block w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: selectedGroup.color }} />
                   <div className="min-w-0">
                     <h2 className="text-sm font-semibold text-soc-stext dark:text-soc-darkstext truncate">{selectedGroup.name}</h2>
                     {selectedGroup.description && (
@@ -377,7 +375,6 @@ export default function GroupRulesTab() {
                           {groups.filter(g => g.id !== selectedGroup.id).map(g => (
                             <button key={g.id} onClick={() => { setMergeSource(selectedGroup); setShowMerge(false); setTimeout(() => setShowMerge(true), 50) }}
                               className="w-full text-left px-3 py-1.5 text-[10px] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] text-soc-stext dark:text-soc-darkstext flex items-center gap-2">
-                              <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
                               Merge into {g.name}
                             </button>
                           ))}
@@ -407,11 +404,11 @@ export default function GroupRulesTab() {
                           <label className="flex items-center gap-1 text-[10px] text-[#9ca3af] cursor-pointer">
                             <input type="checkbox" checked={groupRules.length > 0 && groupRules.every(r => selectedRuleIds.includes(r.id))}
                               onChange={toggleSelectAll}
-                              className="w-3 h-3 rounded border-[#d1d5db] text-[#3b82f6] focus:ring-[#3b82f6]/30 cursor-pointer" />
+                              className="w-3 h-3 rounded border-[#d1d5db] text-[#EF843C] focus:ring-[#EF843C]/30 cursor-pointer" />
                             Select All
                           </label>
                           {selectedRuleIds.length > 0 && (
-                            <span className="text-[9px] text-[#3b82f6] font-medium">{selectedRuleIds.length} selected</span>
+                            <span className="text-[9px] text-[#EF843C] font-medium">{selectedRuleIds.length} selected</span>
                           )}
                         </div>
                       </div>
@@ -428,11 +425,11 @@ export default function GroupRulesTab() {
                                   draggable
                                   onDragStart={e => e.dataTransfer.setData('text/plain', r.id)}
                                   className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs transition-all group ${
-                                    inSelection ? 'bg-[#3b82f6]/5 dark:bg-[#3b82f6]/10' : 'hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140]'
+                                    inSelection ? 'bg-[#EF843C]/5 dark:bg-[#EF843C]/10' : 'hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140]'
                                   }`}>
                                   <label className="flex items-center shrink-0" onClick={e => e.stopPropagation()}>
                                     <input type="checkbox" checked={inSelection} onChange={() => toggleRuleSelection(r.id)}
-                                      className="w-3.5 h-3.5 rounded border-[#d1d5db] dark:border-[#4b5563] text-[#3b82f6] focus:ring-[#3b82f6]/30 cursor-pointer" />
+                                      className="w-3.5 h-3.5 rounded border-[#d1d5db] dark:border-[#4b5563] text-[#EF843C] focus:ring-[#EF843C]/30 cursor-pointer" />
                                   </label>
                                   <span className={`w-2 h-2 rounded-full shrink-0 ${r.enabled ? 'bg-green-500' : 'bg-[#d1d5db] dark:bg-[#4b5563]'}`} />
                                   <span className="flex-1 truncate font-medium text-soc-stext dark:text-soc-darkstext">{r.name}</span>
@@ -441,8 +438,7 @@ export default function GroupRulesTab() {
                                       const og = groupMap[gid]
                                       if (!og) return null
                                       return (
-                                        <span key={gid} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-medium text-white truncate max-w-[70px]"
-                                          style={{ backgroundColor: og.color }}>
+                                        <span key={gid} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-medium text-[#6b7280] dark:text-[#9ca3af] bg-[#f3f4f6] dark:bg-[#2d3140] truncate max-w-[70px]">
                                           {og.name}
                                         </span>
                                       )
@@ -462,7 +458,6 @@ export default function GroupRulesTab() {
                                             {groups.filter(g => g.id !== selectedGroupId).map(g => (
                                               <button key={g.id} onClick={() => handleCopyToGroup(r.id, g.id)}
                                                 className="w-full text-left px-3 py-1.5 text-[10px] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] text-soc-stext dark:text-soc-darkstext flex items-center gap-2">
-                                                <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
                                                 {g.name}
                                               </button>
                                             ))}

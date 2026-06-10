@@ -1,29 +1,35 @@
 {
-  "name": "wazuh-dashboard",
+  "name": "unishield360-dashboard",
   "version": "2.0.0",
-  "description": "Enterprise Wazuh SOC Dashboard",
+  "description": "Enterprise UniShield360 SOC Dashboard",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "node server/server.cjs"
+    "start": "concurrently \"npm run dev\" \"npm run server\"",
+    "server": "node server/server.cjs"
   },
   "dependencies": {
     "@tanstack/react-table": "^8.0.0",
     "axios": "^1.0.0",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.10.0",
+    "concurrently": "^10.0.3",
     "cors": "^2.8.5",
     "dayjs": "^1.0.0",
     "diff": "^9.0.0",
     "dotenv": "^16.0.0",
     "express": "^4.18.0",
     "framer-motion": "^11.0.0",
+    "jsonwebtoken": "^9.0.3",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
-    "recharts": "^2.0.0"
+    "recharts": "^2.0.0",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",

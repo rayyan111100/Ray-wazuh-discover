@@ -58,20 +58,20 @@ const OPERATORS_BY_TYPE = {
 const DEFAULT_OPS = OPERATORS_BY_TYPE.string
 
 const TYPE_ICONS = {
-  string: { icon: '\uD83D\uDCDD', color: '#7b7b7b' },
-  number: { icon: '\uD83D\uDD22', color: '#e5830e' },
-  date: { icon: '\uD83D\uDCC5', color: '#b77c4f' },
-  ip: { icon: '\uD83C\uDF10', color: '#8b5cf6' },
-  boolean: { icon: '\u2705', color: '#1ea59a' },
-  object: { icon: '\uD83D\uDD17', color: '#7b7b7b' },
-  array: { icon: '\uD83D\uDCCB', color: '#06b6d4' },
-  nested: { icon: '\uD83D\uDD17', color: '#22c55e' },
-  keyword: { icon: '\uD83D\uDCDD', color: '#7b7b7b' },
-  text: { icon: '\uD83D\uDCDD', color: '#7b7b7b' },
-  long: { icon: '\uD83D\uDD22', color: '#e5830e' },
-  integer: { icon: '\uD83D\uDD22', color: '#e5830e' },
-  float: { icon: '\uD83D\uDD22', color: '#e5830e' },
-  double: { icon: '\uD83D\uDD22', color: '#e5830e' }
+  string: { icon: 'T', color: '#7b7b7b' },
+  number: { icon: '#', color: '#e5830e' },
+  date: { icon: 'D', color: '#b77c4f' },
+  ip: { icon: 'IP', color: '#8b5cf6' },
+  boolean: { icon: '\u2713', color: '#1ea59a' },
+  object: { icon: '{}', color: '#7b7b7b' },
+  array: { icon: '[]', color: '#06b6d4' },
+  nested: { icon: '{}', color: '#22c55e' },
+  keyword: { icon: 'T', color: '#7b7b7b' },
+  text: { icon: 'T', color: '#7b7b7b' },
+  long: { icon: '#', color: '#e5830e' },
+  integer: { icon: '#', color: '#e5830e' },
+  float: { icon: '#', color: '#e5830e' },
+  double: { icon: '#', color: '#e5830e' }
 }
 
 function mapElasticType(esType) {
@@ -163,7 +163,7 @@ function ComboBox({ options, value, onChange, placeholder, disabled }) {
               onClick={() => select(opt)}
               className={`w-full text-left px-2.5 py-1.5 text-xs transition-colors ${
                 i === activeIdx
-                  ? 'bg-[#e8f0fe] dark:bg-[#2d3140] text-[#1a73e8] dark:text-[#8ab4f8]'
+                  ? 'bg-[#e8f0fe] dark:bg-[#2d3140] text-[#EF843C] dark:text-[#EF843C]'
                   : (opt.actual || opt.value) === value
                     ? 'bg-[#f3f4f6] dark:bg-[#111318] text-[#202124] dark:text-[#e8eaed]'
                     : 'text-[#202124] dark:text-[#e8eaed] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140]'
@@ -213,7 +213,7 @@ export default function FilterEditor({ filter = null, onClose, onSave }) {
       return
     }
     setLoadingValues(true)
-    api('aggregate', { field, index: 'wazuh-alerts-4.x-*', type: 'terms', limit: 20 })
+    api('aggregate', { field, index: 'unishield360-alerts-4.x-*', type: 'terms', limit: 20 })
       .then(d => {
         const buckets = d.buckets || []
         if (!cancelled) {
@@ -317,7 +317,7 @@ export default function FilterEditor({ filter = null, onClose, onSave }) {
           <span className="text-xs font-medium text-[#202124] dark:text-[#e8eaed]">
             {isEdit ? 'Edit filter' : 'Add filter'}
           </span>
-          <button className="text-[11px] text-[#1a73e8] dark:text-[#8ab4f8] hover:underline font-medium">
+          <button className="text-[11px] text-[#EF843C] dark:text-[#EF843C] hover:underline font-medium">
             Edit as Query DSL
           </button>
         </div>
@@ -482,7 +482,7 @@ export default function FilterEditor({ filter = null, onClose, onSave }) {
                           onClick={() => { setValue(String(s.key)); setValueOpen(false) }}
                           className={`w-full flex items-center justify-between px-2.5 py-1.5 text-xs transition-colors ${
                             i === valueActiveIdx
-                              ? 'bg-[#e8f0fe] dark:bg-[#2d3140] text-[#1a73e8] dark:text-[#8ab4f8]'
+                              ? 'bg-[#e8f0fe] dark:bg-[#2d3140] text-[#EF843C] dark:text-[#EF843C]'
                               : 'text-[#202124] dark:text-[#e8eaed] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140]'
                           }`}
                         >
@@ -555,7 +555,7 @@ export default function FilterEditor({ filter = null, onClose, onSave }) {
               <div className="flex items-center gap-2 mt-2">
                 <label className="flex items-center gap-1.5 text-xs text-[#202124] dark:text-[#e8eaed] cursor-pointer select-none">
                   <input type="checkbox" checked={negate} onChange={e => setNegate(e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-[#d1d5db] text-[#3b82f6] focus:ring-[#3b82f6]/30" />
+                    className="w-3.5 h-3.5 rounded border-[#d1d5db] text-[#EF843C] focus:ring-[#EF843C]/30" />
                   <span>Negate (NOT)</span>
                 </label>
               </div>
@@ -571,7 +571,7 @@ export default function FilterEditor({ filter = null, onClose, onSave }) {
             type="button"
             aria-checked={showCustomLabel}
             onClick={() => setShowCustomLabel(!showCustomLabel)}
-            className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${showCustomLabel ? 'bg-[#3b82f6]' : 'bg-[#d1d5db] dark:bg-[#3c4043]'}`}
+            className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${showCustomLabel ? 'bg-[#EF843C]' : 'bg-[#d1d5db] dark:bg-[#3c4043]'}`}
           >
             <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${showCustomLabel ? 'translate-x-[14px]' : 'translate-x-[2px]'}`} />
           </button>
@@ -592,11 +592,11 @@ export default function FilterEditor({ filter = null, onClose, onSave }) {
         <div />
         <div className="flex items-center gap-2">
           <button onClick={onClose}
-            className="px-3 py-1 text-xs font-medium rounded text-[#1a73e8] dark:text-[#8ab4f8] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] transition-colors"
+            className="px-3 py-1 text-xs font-medium rounded text-[#EF843C] dark:text-[#EF843C] hover:bg-[#f3f4f6] dark:hover:bg-[#2d3140] transition-colors"
           >Cancel</button>
           <button onClick={doSave}
             disabled={!field || (!isExistsOp && !isRangeOp && !isLastNOp && !value) || (isRangeOp && (!value || !secondValue)) || (isLastNOp && (!value || isNaN(parseInt(value))))}
-            className="px-3 py-1 text-xs font-semibold rounded bg-[#3b82f6] text-white hover:bg-[#2563eb] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="px-3 py-1 text-xs font-semibold rounded bg-[#EF843C] text-white hover:bg-[#e0752a] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >{isEdit ? 'Save' : 'Add'}</button>
         </div>
       </div>

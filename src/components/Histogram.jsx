@@ -72,7 +72,7 @@ export default function Histogram() {
   if (!histogram.length) return null
 
   const stroke = isDark ? '#2a3648' : '#d3dae6'
-  const fill = isDark ? '#3b82f6' : '#006BB4'
+  const fill = isDark ? '#EF843C' : '#324059'
   const selStart = dragStart !== null ? Math.min(dragStart, dragEnd ?? dragStart) : null
   const selEnd = dragStart !== null ? Math.max(dragStart, dragEnd ?? dragStart) : null
 
@@ -86,13 +86,13 @@ export default function Histogram() {
       onMouseLeave={() => { if (dragging) { setDragging(false); setDragStart(null); setDragEnd(null) } }}
     >
       {dragging && (
-        <div className="absolute top-0 left-0 right-0 text-center text-[8px] text-[#1a73e8] dark:text-[#8ab4f8] bg-[#1a73e8]/10 dark:bg-[#8ab4f8]/10 py-0.5 font-medium z-10">
+        <div className="absolute top-0 left-0 right-0 text-center text-[8px] text-[#EF843C] dark:text-[#EF843C] bg-[#EF843C]/10 dark:bg-[#EF843C]/10 py-0.5 font-medium z-10">
           Release to filter by time range
         </div>
       )}
       <div className="absolute inset-0" style={{ pointerEvents: 'none' }}>
         {selStart !== null && selEnd !== null && dragging && (
-          <div className="absolute top-0 bottom-4 bg-[#1a73e8]/15 dark:bg-[#8ab4f8]/15 border-l border-r border-[#1a73e8]/40 dark:border-[#8ab4f8]/40"
+          <div className="absolute top-0 bottom-4 bg-[#EF843C]/15 dark:bg-[#EF843C]/15 border-l border-r border-[#EF843C]/40 dark:border-[#EF843C]/40"
             style={{
               left: `${(selStart / data.length) * 100}%`,
               width: `${((selEnd - selStart + 1) / data.length) * 100}%`
@@ -117,7 +117,7 @@ export default function Histogram() {
             labelFormatter={(l, p) => p?.[0]?.payload?.ts ? new Date(p[0].payload.ts).toLocaleString() : l}
           />
           <Bar dataKey="count" fill={fill} radius={[1, 1, 0, 0]}
-            activeBar={{ fill: isDark ? '#60a5fa' : '#1a8bff' }}
+            activeBar={{ fill: isDark ? '#EF843C' : '#1a8bff' }}
           />
         </BarChart>
       </ResponsiveContainer>

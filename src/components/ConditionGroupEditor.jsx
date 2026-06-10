@@ -321,36 +321,20 @@ export default function ConditionGroupEditor({ conditions = [], logic = 'AND', d
                 onDragOver={e => handleDragOver(e, grp.id)}
                 onDragLeave={handleDragLeave}
                 onDrop={e => handleDropOnGroup(e, grp.id)}
-                className={`relative rounded-lg border transition-all ${
-                  dragOverId === grp.id ? 'border-[#3b82f6] bg-[#3b82f6]/5 dark:bg-[#3b82f6]/10 shadow-md' : 'border-[#e5e7eb] dark:border-[#2d3140]'
-                } ${depth > 0 ? 'ml-4' : ''}`}
-                style={depth > 0 ? {
-                  borderLeft: '2px solid ' + (dragOverId === grp.id ? '#3b82f6' : '#d1d5db'),
-                  borderLeftColor: dragOverId === grp.id ? '#3b82f6' : undefined
-                } : {}}>
-                {depth > 0 && (
-                  <div className="absolute left-0 top-0 bottom-0 flex items-center">
-                    <div className="w-3 h-px bg-[#d1d5db] dark:bg-[#4b5563]" />
-                  </div>
-                )}
+                className={`rounded-lg border transition-all ${
+                  dragOverId === grp.id ? 'border-[#EF843C] bg-[#EF843C]/5 dark:bg-[#EF843C]/10 shadow-md' : 'border-[#e5e7eb] dark:border-[#2d3140]'
+                }`}>
                 <div className="flex items-center justify-between px-2.5 py-1.5 bg-[#f9fafb] dark:bg-[#0f1117] rounded-t-lg border-b border-[#e5e7eb] dark:border-[#2d3140]">
                   <div className="flex items-center gap-2">
-                    <svg className="w-3 h-3 text-[#6b7280] dark:text-[#9ca3af]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
-                    <span className="text-[9px] font-semibold text-[#6b7280] dark:text-[#9ca3af] uppercase tracking-wider">
-                      Group ({groupItems.length} item{groupItems.length !== 1 ? 's' : ''})
-                    </span>
                     <LogicBadge logic={grp.logic || 'AND'} onClick={() => {
                       const updated = [...conditions]; updated[idx] = { ...grp, logic: (grp.logic || 'AND') === 'AND' ? 'OR' : 'AND' }; onChange(updated)
                     }} />
+                    <span className="text-[9px] text-[#6b7280] dark:text-[#9ca3af]">Group</span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    {canRemove && (
-                      <button onClick={() => handleItemRemove(idx)}
-                        className="p-1 text-[#9ca3af] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-all">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                      </button>
-                    )}
-                  </div>
+                  <button onClick={() => handleItemRemove(idx)}
+                    className="p-1 text-[#9ca3af] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-all">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                  </button>
                 </div>
                 <div className="p-2 sm:p-3">
                   <ConditionGroupEditor
@@ -364,7 +348,6 @@ export default function ConditionGroupEditor({ conditions = [], logic = 'AND', d
                     onLogicChange={newLogic => {
                       const updated = [...conditions]; updated[idx] = { ...grp, logic: newLogic }; onChange(updated)
                     }}
-                    canRemove={groupItems.length > 1}
                   />
                 </div>
               </div>
@@ -412,7 +395,7 @@ function ConditionRow({ condition, fieldList, onChange, onRemove, canRemove, onD
       onDragLeave={onDragLeave}
       onDrop={onDrop}
       className={`flex rounded-lg border p-1.5 sm:p-1.5 transition-all cursor-grab active:cursor-grabbing ${
-        isDragOver ? 'border-[#3b82f6] bg-[#3b82f6]/5 shadow-md' : 'border-[#e5e7eb] dark:border-[#2d3140] bg-[#f9fafb] dark:bg-[#0f1117]'
+        isDragOver ? 'border-[#EF843C] bg-[#EF843C]/5 shadow-md' : 'border-[#e5e7eb] dark:border-[#2d3140] bg-[#f9fafb] dark:bg-[#0f1117]'
       }`}>
       <div className="flex items-center gap-0.5 text-[#9ca3af] opacity-40 cursor-grab shrink-0">
         <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M8 6h2v2H8V6zm6 0h2v2h-2V6zM8 11h2v2H8v-2zm6 0h2v2h-2v-2zm-6 5h2v2H8v-2zm6 0h2v2h-2v-2z"/></svg>

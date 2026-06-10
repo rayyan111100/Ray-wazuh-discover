@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
-import { api } from '../api'
+import { api, apiPost } from '../api'
 import { applyClientFilters, buildDqlText, parseDateStr, COMMON_FIELDS, inferFieldTypes, extractTotal, extractResults } from '../utils'
 import { getRule, getAllRules, updateRule, deleteRule, toggleRuleEnabled } from '../services/ruleStorage'
 import { addRulesToGroup, moveRulesToGroup, removeRulesFromGroup } from '../services/ruleGroupManager'
@@ -13,13 +13,14 @@ function genId() { return ++filterId }
 
 export function AppProvider({ children }) {
   const [theme, setThemeRaw] = useState(() => localStorage.getItem('theme') || 'dark')
-  const [tab, setTab] = useState('discover')
+  const [tab, setTabState] = useState(() => localStorage.getItem('dashboard_tab') || 'discover')
+  const setTab = useCallback(t => { localStorage.setItem('dashboard_tab', t); setTabState(t) }, [])
   const [dql, setDql] = useState('')
   const [filters, setFilters] = useState([])
   const [startDate, setStartDate] = useState('now-24h')
   const [endDate, setEndDate] = useState('now')
   const [limit, setLimit] = useState(50)
-  const [index, setIndex] = useState('wazuh-alerts-4.x-*')
+  const [index, setIndex] = useState('unishield360-alerts-4.x-*')
   const [sortField, setSortField] = useState('timestamp')
   const [sortOrder, setSortOrder] = useState('desc')
   const [columns, setColumns] = useState(['timestamp', 'Rule', 'rule.id', 'rule.description'])
@@ -36,7 +37,6 @@ export function AppProvider({ children }) {
   const [pendingRuleId, setPendingRuleId] = useState(null)
   const [activeGroup, setActiveGroup] = useState(null)
   const [selectedRules, setSelectedRules] = useState([])
-  const [groupFilter, setGroupFilter] = useState([])
   const [filterMatch, setFilterMatch] = useState('and')
   const [warning, setWarning] = useState(null)
   const [page, setPageState] = useState(1)
@@ -88,11 +88,14 @@ export function AppProvider({ children }) {
     if (!pinned.length) setDql('')
   }, [])
 
+  const searchCounter = useRef(0)
+
   const doSearch = useCallback(async (opts = {}) => {
     setLoading(true)
     setError(null)
     setWarning(null)
     const prevPage = pageRef.current
+    const gen = ++searchCounter.current
     try {
       const currentFilters = opts.filters !== undefined ? opts.filters : filtersRef.current
       const matchMode = opts.filterMatch || filterMatch
@@ -101,7 +104,7 @@ export function AppProvider({ children }) {
       // Build FULL filter DQL (all filters, for client-side)
       const fullFilterQ = buildDqlText(currentFilters, matchMode)
 
-      // Build SERVER filter DQL (exclude operators the Wazuh API search endpoint ignores)
+      // Build SERVER filter DQL (exclude operators the UniShield360 API search endpoint ignores)
       // Known issues: NOT, is not, range operators, wildcard, regex, contains, starts/ends with
       const serverSafe = currentFilters.filter(f =>
         !f.disabled &&
@@ -138,25 +141,27 @@ export function AppProvider({ children }) {
       // Use scan endpoint for deep pagination (no 10,000 max_result_window limit)
       const ep = offset > 9000 ? 'scan' : 'search'
       const [d, c] = await Promise.all([
-        api(ep, params),
+        offset > 9000 ? apiPost(ep, params) : api(ep, params),
         api('count', { index: params.index, q: params.q || '*', start_date: params.start_date, end_date: params.end_date }).catch(() => null)
       ])
+
+      if (gen !== searchCounter.current) return // stale request, discard
 
       let totalRes = extractTotal(c) || extractTotal(d)
       let rawRes = extractResults(d)
 
       // Auto-fallback: if 0 results in 4.x index, try broader index
       if (totalRes === 0 && params.index && params.index.includes('4.x') && !opts.index) {
-        const fallbackParams = { ...params, index: 'wazuh-alerts-*' }
+        const fallbackParams = { ...params, index: 'unishield360-alerts-*' }
         try {
           const [fd, fc] = await Promise.all([
             api('search', fallbackParams),
-            api('count', { index: 'wazuh-alerts-*', q: params.q || '*', start_date: params.start_date, end_date: params.end_date }).catch(() => null)
+            api('count', { index: 'unishield360-alerts-*', q: params.q || '*', start_date: params.start_date, end_date: params.end_date }).catch(() => null)
           ])
           const fdTotal = extractTotal(fd) || extractTotal(fc)
           if (fdTotal > 0) {
-            setIndex('wazuh-alerts-*')
-            setWarning(`Switched to wazuh-alerts-* (found ${fdTotal} results). No data in ${params.index}.`)
+            setIndex('unishield360-alerts-*')
+            setWarning(`Switched to unishield360-alerts-* (found ${fdTotal} results). No data in ${params.index}.`)
             totalRes = fdTotal
             rawRes = extractResults(fd)
           }
@@ -254,8 +259,7 @@ export function AppProvider({ children }) {
 
   const toggleColumn = useCallback(name => {
     setColumns(prev => { const i = prev.indexOf(name); return i >= 0 ? prev.filter(c => c !== name) : [...prev, name] })
-    doSearch()
-  }, [doSearch])
+  }, [])
 
   const moveColumn = useCallback((name, dir) => {
     setColumns(prev => {
@@ -352,7 +356,6 @@ export function AppProvider({ children }) {
     pendingRuleId, setPendingRuleId,
     activeGroup, setActiveGroup,
     selectedRules, setSelectedRules,
-    groupFilter, setGroupFilter,
     filterMatch, setFilterMatch,
     warning, setWarning, clearAllFilters,
     selectRule, deselectRule,

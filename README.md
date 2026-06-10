@@ -1,50 +1,60 @@
-﻿# Wazuh SOC Dashboard
+﻿# UniShield360 SOC Dashboard
 
-Enterprise-grade Security Operations Center dashboard for Wazuh SIEM. Real-time alert monitoring, rule management, geo-tracking, and comprehensive analytics.
+Enterprise-grade Security Operations Center dashboard for UniShield360 SIEM. Real-time alert monitoring, rule management, geo-tracking, and comprehensive analytics.
 
-![Dashboard Screenshot](output/Screenshot%202026-06-03%20170552.png)
+![Dashboard Overview](output/dashboard.png)
+
+---
 
 ## Features
 
-### 🔍 Discover (SIEM Search)
-- Full-text search with DQL (Dashboard Query Language)
-- Field filters with AND/OR match modes
-- Date range picker (relative, absolute, presets)
-- Auto-refresh with configurable intervals
-- **Server-side pagination** with `offset`/`limit` (no 10k max_result_window limit — uses `/scan` for deep pages)
-- Live clock display
-- Go-to page input for direct navigation
-- Column drag-and-drop reorder
+### Discover (SIEM Search)
+Full-text search with DQL, field filters, date range picker, auto-refresh, server-side pagination, column drag-and-drop.
 
-### 📊 Dashboard
-- Alert timeline histogram with brush selection
-- Rule-level distribution (pie chart)
-- Top rules, agents, and categories
-- Recent alerts table with drill-down
+![Discover Tab](output/discover.png)
 
-### ⚙️ Rules Engine
-- Visual rule builder with nested conditions
-- Rule evaluation engine with priority/overwrite
-- Rule groups with color-coded badges
-- Version history with diff/rollback
-- Test lab with sample event simulation
-- Bulk operations (move, copy, delete, export)
+### Dashboard
+Alert timeline histogram, rule-level distribution, top rules/agents/categories, recent alerts with drill-down.
 
-### 🛡️ Security Hub
-- Multi-tab security overview
-- Alert level distribution over time
-- Drill-down to specific time ranges
-- MITRE ATT&CK mapping support
+![Dashboard](output/dashboard.png)
 
-### 🌍 Geo Tracking
-- GeoIP data visualization
-- Location-based alert aggregation
+### Security Hub
+Multi-tab security overview, alert level distribution over time, drill-down to specific time ranges.
 
-### 📋 Additional Tools
+![Security Hub](output/security-hub.png)
+
+### Rules Engine
+Visual rule builder with nested AND/OR conditions, rule evaluation engine with priority/overwrite, version history with diff/rollback, test lab with sample event simulation, bulk operations.
+
+![Rules Editor](output/rules-editor-nested.png)
+![Version History](output/version-history.png)
+
+### Rule Groups
+Group management with search, rule-group assignments, bulk add/move/copy.
+
+![Groups](output/groups.png)
+![Group Rules](output/group-rules.png)
+
+### Rule View
+Apply custom rules on search results, compare custom vs Wazuh manager rules, resizable splitter between histogram and results.
+
+![Rule View](output/ruleview.png)
+
+### Filter Editor
+Advanced filter building with field autocomplete, value suggestions, AND/OR logic.
+
+![Filter Editor](output/filter-editor.png)
+
+### Geo Tracking
+GeoIP data visualization with location-based alert aggregation.
+
+### Additional Tools
 - Index browser and health monitoring
 - Log decoder/parser with format detection
 - Scan results viewer
 - Raw search endpoint access
+
+---
 
 ## Quick Start
 
@@ -55,9 +65,9 @@ npm install
 # Configure environment
 cp .env.example .env
 # Edit .env with your Wazuh API credentials:
-#   WAZUH_API_URL=https://your-wazuh-manager:55000
-#   WAZUH_USER=your-username
-#   WAZUH_PASSWORD=your-password
+#   UNISHIELD360_API_URL=https://your-wazuh-manager:55000
+#   UNISHIELD360_USER=your-username
+#   UNISHIELD360_PASSWORD=your-password
 
 # Start development server (frontend + API proxy)
 npm start
@@ -66,6 +76,8 @@ npm start
 npm run dev     # Vite dev server on :5173
 npm run server  # Express proxy on :3000
 ```
+
+---
 
 ## Architecture
 
@@ -88,38 +100,82 @@ npm run server  # Express proxy on :3000
 - **PDF Export:** jsPDF + jspdf-autotable
 - **Backend:** Express.js proxy with JWT auth
 - **Data Storage:** localStorage (rules/groups), OpenSearch (alerts via Wazuh API)
+- **Real-time:** WebSocket-based alert streaming
+
+---
+
+## Features Detail
+
+### Hierarchical Sidebar Navigation
+- Collapsible sidebar with grouped navigation
+- Rules section with expandable children: Create Rule, Groups, Rule View, Rule Guide
+- Smooth animations with framer-motion
+
+### Create Rule (Rule Builder)
+- Visual condition builder with nested AND/OR groups
+- Field autocomplete with search
+- GDPR field detection and article mapping
+- Rule test lab with JSON test events
+- Version history with diff comparison and rollback
+- Bulk group assignment
+- Resizable sidebar with rule list search
+
+### Group Management
+- Searchable group list
+- Group creation, editing, deletion
+- Rule-group assignment with bulk operations
+- Drag-and-drop condition reordering
+
+### Resizable Panels
+- All main panels support resize via draggable splitter bars
+- Right-side fields panel toggleable per tab
+- Persisted panel widths in localStorage
+- Orange accent drag handles
+
+### Index Pattern Mapping
+- Frontend uses `unishield360-*` index names
+- Server auto-maps to `wazuh-*` for API calls
+- Response interceptor rewrites `_index` fields in returned data
+
+### Authentication
+- JWT-based authentication
+- Login modal with role-based access
+- Notification settings for admin users
+
+---
 
 ## UI Components
 
 | Component | Location | Description |
 |---|---|---|
-| `Navbar` | `src/components/Navbar.jsx` | Top bar with New/Save/Open/Share/Reporting/Inspect |
-| `Sidebar` | `src/components/Sidebar.jsx` | Left navigation with tab switching |
-| `QueryBar` | `src/components/QueryBar.jsx` | DQL input, filter chips, date picker, saved filters |
+| `Navbar` | `src/components/Navbar.jsx` | Top bar with branding, search actions, reporting |
+| `Sidebar` | `src/components/Sidebar.jsx` | Hierarchical left navigation |
+| `QueryBar` | `src/components/QueryBar.jsx` | DQL input, filter chips, date picker, index selector |
 | `ResultsTable` | `src/components/ResultsTable.jsx` | Paginated data table with column drag-drop |
-| `FieldSidebar` | `src/components/FieldSidebar.jsx` | Field explorer with type/color indicators |
-| `Histogram` | `src/components/Histogram.jsx` | Time-based bar chart with time range selection |
-| `DateRangePicker` | `src/components/DateRangePicker.jsx` | Relative/absolute date selection |
-| `RefreshInterval` | `src/components/RefreshInterval.jsx` | Auto-refresh controls |
+| `FieldSidebar` | `src/components/FieldSidebar.jsx` | Field explorer with type indicators |
+| `Histogram` | `src/components/Histogram.jsx` | Time-based bar chart with range selection |
+| `RuleBuilder` | `src/components/RuleBuilder.jsx` | Visual rule editor with conditions/actions |
+| `ConditionGroupEditor` | `src/components/ConditionGroupEditor.jsx` | Nested AND/OR condition groups |
+| `ResizablePanel` | `src/components/ResizablePanel.jsx` | Draggable splitter panels |
+| `ResizableSplitter` | `src/components/ResizableSplitter.jsx` | Ratio-based split layout |
 
 ## Pages / Tabs
 
 | Tab | File | Purpose |
 |---|---|---|
-| Discover | `DiscoverTab.jsx` | Main SIEM search with resizable splitter |
+| Discover | `DiscoverTab.jsx` | Main SIEM search |
 | Dashboard | `SocDashboard.jsx` | Alert overview and statistics |
 | Security Hub | `SecurityHub.jsx` | Multi-view security analysis |
 | Rules | `RulesTab.jsx` | Rule CRUD and management |
+| Create Rule | `CreateRuleTab.jsx` | New rule editor |
 | Rule Groups | `RuleGroupsTab.jsx` | Group management |
-| Group Rules | `GroupRulesTab.jsx` | Group-rule assignments |
-| Rule View | `RuleViewTab.jsx` | Rule application on search results |
-| Analytics | `AnalyticsTab.jsx` | Alert level distribution |
+| Rule View | `RuleViewTab.jsx` | Rule application on results |
+| Rule Guide | `RuleGuideTab.jsx` | Rule writing documentation |
+| Decoder | `DecoderTab.jsx` | Log parsing |
+| Health | `HealthTab.jsx` | API health monitoring |
+| Scan | `ScanTab.jsx` | Security scan results |
 | Geo | `GeoTab.jsx` | GeoIP data |
 | Search | `SearchTab.jsx` | Raw API search |
-| Indices | `IndicesTab.jsx` | Index listing & stats |
-| Health | `HealthTab.jsx` | API health monitoring |
-| Decoder | `DecoderTab.jsx` | Log parsing |
-| Scan | `ScanTab.jsx` | Security scan results |
 
 ## API Endpoints
 
@@ -135,23 +191,8 @@ All proxied through Express to Wazuh API:
 | `/api/indices` | GET | Index listing |
 | `/api/health` | GET | API health check |
 | `/api/dashboard` | GET | Aggregated dashboard data |
-
-## Roadmap
-
-- [x] Discover tab with DQL search & filters
-- [x] Pagination with deep page support (scan API)
-- [x] Column drag-and-drop reorder
-- [x] Save/Open/Share search configurations
-- [x] CSV & PDF reporting
-- [x] Resizable splitter panels
-- [x] Live clock & auto-refresh
-- [ ] Alert notifications & webhooks
-- [ ] Custom dashboard widgets
-- [ ] User role-based access control
-- [ ] Advanced MITRE ATT&CK mapping
-- [ ] Real-time WebSocket updates
-- [ ] Multi-index search comparison
-- [ ] Saved search tagging & categories
+| `/api/geo` | GET | GeoIP aggregation |
+| `/api/wazuh-rules` | GET | Fetch Wazuh manager rules |
 
 ## Development
 

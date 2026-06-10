@@ -9,7 +9,7 @@ export default function SearchTab() {
   const doSearch = async () => {
     setLoading(true)
     try {
-      const d = await api('search', { q: q || undefined, limit, index: 'wazuh-alerts-4.x-*', start_date: 'now-24h', end_date: 'now' })
+      const d = await api('search', { q: q || undefined, limit, index: 'unishield360-alerts-4.x-*', start_date: 'now-24h', end_date: 'now' })
       setResults(d)
     } catch (e) { setResults({ error: e.message }) }
     finally { setLoading(false) }
